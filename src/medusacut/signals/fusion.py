@@ -19,10 +19,12 @@ from medusacut.types import Candidate, ScoreTrack
 MIN_LEN = 8.0
 MAX_LEN = 60.0
 # Fracao do pico ate onde a janela cresce ("ainda tem acao aqui?").
-SUSTAIN_FRAC = 0.30
+SUSTAIN_FRAC = 0.15
+# Tolera vales curtos abaixo do limiar sem encerrar a janela (segundos).
+GAP_TOL_SEC = 1.5
 # Folga antes/depois pra dar contexto e nao cortar seco.
-PAD_IN = 1.0
-PAD_OUT = 0.5
+PAD_IN = 1.5
+PAD_OUT = 0.7
 
 
 def combine(
@@ -112,15 +114,37 @@ def _auto_window(
     min_len: float,
     max_len: float,
 ) -> tuple[float, float]:
-    """Cresce a janela ao redor de `peak` enquanto a acao se sustenta."""
+    """Cresce a janela ao redor de `peak` enquanto a acao se sustenta.
+
+    Tolera vales curtos (ate `GAP_TOL_SEC`) abaixo do limiar pra nao encerrar o
+    corte numa pausa breve — senao tudo colapsa no `min_len`.
+    """
     thresh = max(0.0, scores[peak] * SUSTAIN_FRAC)
+    gap_tol = max(1, int(round(GAP_TOL_SEC / hop)))
 
     left = peak
-    while left - 1 >= 0 and scores[left - 1] >= thresh:
-        left -= 1
+    gaps = 0
+    j = peak
+    while j - 1 >= 0:
+        j -= 1
+        if scores[j] >= thresh:
+            left, gaps = j, 0
+        else:
+            gaps += 1
+            if gaps > gap_tol:
+                break
+
     right = peak
-    while right + 1 < len(scores) and scores[right + 1] >= thresh:
-        right += 1
+    gaps = 0
+    j = peak
+    while j + 1 < len(scores):
+        j += 1
+        if scores[j] >= thresh:
+            right, gaps = j, 0
+        else:
+            gaps += 1
+            if gaps > gap_tol:
+                break
 
     start = times[left] - hop / 2.0 - PAD_IN
     end = times[right] + hop / 2.0 + PAD_OUT

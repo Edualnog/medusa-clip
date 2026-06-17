@@ -44,6 +44,30 @@ def test_plateau_yields_longer_clip_than_spike():
     assert plateau.duration > spike.duration
 
 
+def test_sustained_region_expands_well_beyond_min():
+    # uma regiao sustentada de ~13s deve virar um corte bem maior que o min_len,
+    # e nao colapsar no minimo (regressao do bug "tudo sai com 8s").
+    scores = [0.0] * 120
+    for i in range(44, 57):  # 13 janelas de 1s acima do limiar
+        scores[i] = 2.0
+    cands = select_candidates([_track(scores)], max_clips=1, duration=120.0)
+    assert len(cands) == 1
+    assert cands[0].duration > MIN_LEN + 3.0  # claramente acima do minimo
+    assert cands[0].duration <= MAX_LEN + 1e-6
+
+
+def test_brief_dip_does_not_split_the_clip():
+    # vale curto (1s) no meio de uma regiao quente nao deve encerrar o corte.
+    scores = [0.0] * 120
+    for i in range(40, 61):
+        scores[i] = 2.0
+    scores[50] = 0.0  # vale de 1s no meio
+    cands = select_candidates([_track(scores)], max_clips=1, duration=120.0)
+    assert len(cands) == 1
+    # atravessa o vale: dura mais que metade da regiao quente
+    assert cands[0].duration > 15.0
+
+
 def test_max_len_caps_a_huge_plateau():
     scores = [3.0] * 200  # acao "infinita"
     cands = select_candidates([_track(scores)], max_clips=1, duration=200.0)
