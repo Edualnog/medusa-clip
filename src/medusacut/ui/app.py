@@ -45,6 +45,7 @@ def ensure_media(url: str, out_dir: str, report) -> None:
     track = audio_energy.analyze(wav)
     ss.media = media
     ss.track = track
+    ss.wav = wav
     ss.media_url = url
 
 
@@ -56,6 +57,14 @@ with st.sidebar:
     st.header("Ajustes")
     max_clips = st.slider("Maximo de cortes", 1, 10, 3)
     st.caption("A **duracao de cada corte e automatica** — o sistema decide pelo conteudo.")
+    score_virality = st.checkbox(
+        "Pontuar viralizacao (LLM)", value=True,
+        help="Transcreve, da um gancho, nota de viralizacao 0-100 e re-ranqueia os cortes. Precisa da chave no .env.",
+    )
+    game_context = st.text_input(
+        "Contexto do jogo/canal (opcional)", placeholder="ex.: Valorant, clutch 1v3",
+        help="Ajuda o LLM a calibrar o gancho e a nota.",
+    )
     with st.expander("Avancado"):
         min_len = st.slider("Duracao minima (s)", 5, 30, int(fusion.MIN_LEN))
         max_len = st.slider("Duracao maxima (s)", 30, 90, int(fusion.MAX_LEN))
@@ -110,7 +119,10 @@ if gerar:
             layout="dynamic_gameplay" if dynamic_reframe else "gameplay_only",
             url=clean_url,
             facecam_corner=facecam_corner,
-            progress=lambda f, label: report(0.68 + 0.32 * f, label),
+            audio_path=ss.wav,
+            game_context=game_context.strip(),
+            score_virality=score_virality,
+            progress=lambda f, label: report(0.66 + 0.34 * f, label),
         )
         report(1.0, "Pronto")
         ss.clips = clips
@@ -137,17 +149,25 @@ if "track" in ss:
 # Resultados.
 clips = ss.get("clips")
 if clips:
-    st.subheader(f"{len(clips)} corte(s) em {ss.out_dir}/")
+    st.subheader(f"{len(clips)} corte(s) em {ss.out_dir}/ — ordenados por viralizacao")
     cols = st.columns(min(3, len(clips)))
     for i, clip in enumerate(clips):
         with cols[i % len(cols)]:
             path = os.path.join(ss.out_dir, clip.file)
             if os.path.exists(path):
                 st.video(path)
+            if clip.hook:
+                st.markdown(f"### {clip.hook}")
+            if clip.virality_score is not None:
+                st.progress(
+                    clip.virality_score / 100.0,
+                    text=f"🔥 Viralizacao: {clip.virality_score:.0f}/100",
+                )
+            if clip.reason:
+                st.caption(f"_Por que prende:_ {clip.reason}")
             st.markdown(
-                f"**{clip.file}**  \n"
-                f"⏱ {clip.start:.1f}–{clip.end:.1f}s "
-                f"({clip.end - clip.start:.0f}s) · score {clip.score:+.2f}"
+                f"`{clip.file}` · ⏱ {clip.start:.1f}–{clip.end:.1f}s "
+                f"({clip.end - clip.start:.0f}s) · energia {clip.score:+.2f}"
             )
     manifest_path = os.path.join(ss.out_dir, "manifest.json")
     if os.path.exists(manifest_path):

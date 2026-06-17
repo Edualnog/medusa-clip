@@ -31,6 +31,15 @@ class ScoreTrack:
 
 
 @dataclass
+class Word:
+    """Uma palavra transcrita com timestamps ABSOLUTOS (s) no video."""
+
+    text: str
+    start: float
+    end: float
+
+
+@dataclass
 class Candidate:
     """Um momento candidato a virar corte, antes do render."""
 

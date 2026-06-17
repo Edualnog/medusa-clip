@@ -29,22 +29,23 @@ def generate_clips(
     layout: str = "facecam_top_gameplay_bottom",
     game_context: str = "",
     facecam_corner: str | None = None,
+    score_virality: bool = True,
     progress: Progress | None = None,
 ) -> list[Clip]:
     """
-    Fluxo (duracao do corte decidida pelo conteudo; demais passos marcados):
+    Fluxo (duracao do corte decidida pelo conteudo):
       1. ingest YouTube (yt-dlp): baixa o video
       2. preprocess (ffmpeg): extrai audio, le fps/dimensoes
-      3. transcribe (faster-whisper): timestamps por palavra            [M2]
+      3. transcribe (faster-whisper): timestamps por palavra            [no score]
       4. extrair sinais (audio_energy [+ scene_change/chat_velocity])
       5. fundir -> top-N candidatos (DURACAO AUTOMATICA)
-      6. >>> gerar GANCHO + score por candidato (hooks.generate_hook) <<< [M3]
-      7. detectar facecam -> planejar layout                            [M4]
+      6. >>> GANCHO + score de viralizacao (LLM) -> re-rank <<<
+      7. detectar facecam -> planejar layout                            [M4 parcial]
       8. render (ffmpeg) [+ legenda karaoke no M2]
       9. escrever clipes em out_dir/ + manifest.json
 
-    `progress` (keyword opcional) reporta 0..1 + rotulo pra UI/CLI. Cada etapa
-    atras de interface.
+    `score_virality` liga a etapa 6 (precisa de LLM_API_KEY no .env; se faltar ou
+    falhar, cai pro ranking por energia). `progress` reporta 0..1 pra UI/CLI.
     """
     from medusacut import preprocess
     from medusacut.ingest import youtube
@@ -68,7 +69,7 @@ def generate_clips(
         [audio_track], max_clips=max_clips, duration=media.duration
     )
 
-    # 7-9. reframe + render + manifest (0.68 -> 1.00)
+    # 6-9. score (LLM) + reframe + render + manifest (0.65 -> 1.00)
     return render_candidates(
         media,
         candidates,
@@ -76,7 +77,10 @@ def generate_clips(
         layout=layout,
         url=url,
         facecam_corner=facecam_corner,
-        progress=_band(progress, 0.68, 1.0),
+        audio_path=wav_path,
+        game_context=game_context,
+        score_virality=score_virality,
+        progress=_band(progress, 0.65, 1.0),
     )
 
 
@@ -88,14 +92,18 @@ def render_candidates(
     layout: str,
     url: str,
     facecam_corner: str | None = None,
+    audio_path: str | None = None,
+    game_context: str = "",
+    score_virality: bool = False,
     progress: Progress | None = None,
 ) -> list[Clip]:
-    """Reframe (segue a acao) + render de cada candidato + manifest.
+    """Score de viralizacao (opcional) + reframe + render + manifest.
 
     Separado de `generate_clips` de proposito: o painel local reusa o download e
-    a analise (em cache) e so re-renderiza ao mexer nos parametros. `progress`
-    reporta 0..1 ao longo do processo. `layout='gameplay_only'` faz crop central
-    estatico; qualquer outro valor usa o enquadramento dinamico (segue a acao).
+    a analise (em cache) e so re-pontua/re-renderiza ao mexer nos parametros.
+    `layout='gameplay_only'` faz crop central estatico; qualquer outro valor usa o
+    enquadramento dinamico. Com `score_virality`, transcreve cada candidato, pede
+    gancho+nota ao LLM, aperta o in/out e RE-RANQUEIA por viralizacao.
     """
     from medusacut.reframe import layouts
     from medusacut.render import ffmpeg as render
@@ -105,13 +113,21 @@ def render_candidates(
     dynamic = layout != "gameplay_only"
     layout_name = "dynamic_gameplay" if dynamic else "gameplay_only"
 
-    total = len(candidates)
-    clips: list[Clip] = []
-    for i, cand in enumerate(candidates, start=1):
-        _report(progress, (i - 1) / total if total else 1.0, f"Enquadrando e renderizando {i}/{total}…")
-        plan = layouts.build_plan(
-            media, cand, dynamic=dynamic, facecam_corner=facecam_corner
+    # 6. gancho + score (LLM) -> re-rank. Falha de LLM nao derruba o pipeline.
+    if score_virality and audio_path:
+        scored = _score_candidates(
+            media, candidates, audio_path, game_context, _band(progress, 0.0, 0.5)
         )
+        render_progress = _band(progress, 0.5, 1.0)
+    else:
+        scored = [(c, None) for c in candidates]
+        render_progress = progress
+
+    total = len(scored)
+    clips: list[Clip] = []
+    for i, (cand, hook) in enumerate(scored, start=1):
+        _report(render_progress, (i - 1) / total if total else 1.0, f"Enquadrando e renderizando {i}/{total}…")
+        plan = layouts.build_plan(media, cand, dynamic=dynamic, facecam_corner=facecam_corner)
         file_name = f"clip_{i:02d}.mp4"
         out_path = os.path.join(out_dir, file_name)
         render.render_clip(media, cand, plan, out_path, cache_dir=cache_dir)
@@ -122,12 +138,47 @@ def render_candidates(
                 end=cand.end,
                 score=cand.score,
                 file=file_name,
+                hook=hook.hook if hook else "",
+                reason=hook.reason if hook else "",
+                virality_score=hook.virality_score if hook else None,
             )
         )
 
     _write_manifest(out_dir, url=url, layout=layout_name, clips=clips)
-    _report(progress, 1.0, "Pronto")
+    _report(render_progress, 1.0, "Pronto")
     return clips
+
+
+def _score_candidates(media, candidates, audio_path, game_context, progress):
+    """Transcreve + pontua cada candidato, aperta o in/out e ordena por viralizacao.
+
+    Retorna [(candidate_possivelmente_refinado, HookResult|None)], ja ordenado
+    (maior nota primeiro; sem nota por ultimo). Erro de LLM/whisper vira nota None.
+    """
+    from medusacut.hooks import base as hooks
+    from medusacut.transcribe import whisper
+
+    total = len(candidates)
+    scored: list[tuple[Candidate, object | None]] = []
+    for i, cand in enumerate(candidates, start=1):
+        _report(progress, (i - 1) / total if total else 1.0, f"Transcrevendo e avaliando {i}/{total}…")
+        try:
+            words = whisper.transcribe_segment(audio_path, cand.start, cand.end)
+            text = whisper.transcript_text(words)
+            result = hooks.score_candidate(cand, text, game_context)
+            if result.refined_start is not None and result.refined_end is not None:
+                cand = Candidate(result.refined_start, result.refined_end, cand.score)
+            scored.append((cand, result))
+        except Exception as exc:  # LLM/whisper/rede: nao derruba o pipeline
+            import sys
+
+            print(f"[medusacut] sem score de viralizacao no corte {i}: {exc}", file=sys.stderr)
+            scored.append((cand, None))
+
+    scored.sort(
+        key=lambda t: t[1].virality_score if t[1] is not None else -1.0, reverse=True
+    )
+    return scored
 
 
 def _report(progress: Progress | None, frac: float, label: str) -> None:
