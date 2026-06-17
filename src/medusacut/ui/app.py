@@ -69,10 +69,14 @@ with st.sidebar:
         min_len = st.slider("Duracao minima (s)", 5, 30, int(fusion.MIN_LEN))
         max_len = st.slider("Duracao maxima (s)", 30, 90, int(fusion.MAX_LEN))
         st.divider()
-        dynamic_reframe = st.checkbox(
-            "Enquadramento dinamico (segue a acao)", value=True,
-            help="O recorte 9:16 acompanha a acao no corte, em vez de centro fixo.",
-        )
+        _LAYOUTS = {
+            "Gameplay (segue a acao)": "dynamic_gameplay",
+            "Facecam em cima + gameplay embaixo": "facecam_top_gameplay_bottom",
+            "Tela cheia + fundo desfocado": "gameplay_blur",
+            "Crop central (estatico)": "gameplay_only",
+        }
+        layout_label = st.selectbox("Layout", list(_LAYOUTS), index=0)
+        layout_value = _LAYOUTS[layout_label]
         _FACECAM = {
             "Nenhum / varia": None,
             "Topo esquerda": "tl",
@@ -82,9 +86,11 @@ with st.sidebar:
         }
         facecam_label = st.selectbox(
             "Facecam (webcam do streamer)", list(_FACECAM), index=0,
-            help="Mascara esse canto pra o enquadramento focar no jogo, nao no streamer.",
+            help="Necessario pro layout 'facecam em cima'. Tambem mascara esse canto no reframe dinamico.",
         )
         facecam_corner = _FACECAM[facecam_label]
+        if layout_value == "facecam_top_gameplay_bottom" and facecam_corner is None:
+            st.warning("Escolha o canto do facecam pra usar o layout 'facecam em cima'.")
 
     gerar = st.button("Gerar cortes", type="primary", disabled=not url.strip())
 
@@ -116,7 +122,7 @@ if gerar:
             ss.media,
             candidates,
             out_dir=out_dir,
-            layout="dynamic_gameplay" if dynamic_reframe else "gameplay_only",
+            layout=layout_value,
             url=clean_url,
             facecam_corner=facecam_corner,
             audio_path=ss.wav,

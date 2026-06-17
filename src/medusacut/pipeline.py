@@ -105,13 +105,9 @@ def render_candidates(
     enquadramento dinamico. Com `score_virality`, transcreve cada candidato, pede
     gancho+nota ao LLM, aperta o in/out e RE-RANQUEIA por viralizacao.
     """
-    from medusacut.reframe import layouts
-    from medusacut.render import ffmpeg as render
-
     os.makedirs(out_dir, exist_ok=True)
     cache_dir = os.path.join(out_dir, ".cache")
-    dynamic = layout != "gameplay_only"
-    layout_name = "dynamic_gameplay" if dynamic else "gameplay_only"
+    layout_name = _resolve_layout(layout, facecam_corner)
 
     # 6. gancho + score (LLM) -> re-rank. Falha de LLM nao derruba o pipeline.
     if score_virality and audio_path:
@@ -127,10 +123,9 @@ def render_candidates(
     clips: list[Clip] = []
     for i, (cand, hook) in enumerate(scored, start=1):
         _report(render_progress, (i - 1) / total if total else 1.0, f"Enquadrando e renderizando {i}/{total}…")
-        plan = layouts.build_plan(media, cand, dynamic=dynamic, facecam_corner=facecam_corner)
         file_name = f"clip_{i:02d}.mp4"
         out_path = os.path.join(out_dir, file_name)
-        render.render_clip(media, cand, plan, out_path, cache_dir=cache_dir)
+        _render_layout(media, cand, layout_name, facecam_corner, out_path, cache_dir)
         clips.append(
             Clip(
                 index=i,
@@ -179,6 +174,40 @@ def _score_candidates(media, candidates, audio_path, game_context, progress):
         key=lambda t: t[1].virality_score if t[1] is not None else -1.0, reverse=True
     )
     return scored
+
+
+def _resolve_layout(layout: str, facecam_corner: str | None) -> str:
+    """Normaliza o nome do layout; facecam sem canto definido cai pro dinamico."""
+    if layout == "facecam_top_gameplay_bottom":
+        return layout if facecam_corner else "dynamic_gameplay"
+    if layout in ("gameplay_blur", "gameplay_only", "dynamic_gameplay"):
+        return layout
+    return "dynamic_gameplay"  # nome legado/desconhecido -> dinamico
+
+
+def _render_layout(
+    media: Media,
+    candidate: Candidate,
+    layout_name: str,
+    facecam_corner: str | None,
+    out_path: str,
+    cache_dir: str,
+) -> None:
+    """Despacha o render conforme o layout resolvido."""
+    from medusacut.reframe import compose, layouts
+    from medusacut.render import ffmpeg as render
+
+    if layout_name == "facecam_top_gameplay_bottom":
+        compose.render_facecam_layout(
+            media, candidate, facecam_corner=facecam_corner,
+            out_path=out_path, cache_dir=cache_dir, dynamic=True,
+        )
+    elif layout_name == "gameplay_blur":
+        compose.render_blur_fit(media, candidate, out_path=out_path)
+    else:
+        dynamic = layout_name != "gameplay_only"
+        plan = layouts.build_plan(media, candidate, dynamic=dynamic, facecam_corner=facecam_corner)
+        render.render_clip(media, candidate, plan, out_path, cache_dir=cache_dir)
 
 
 def _report(progress: Progress | None, frac: float, label: str) -> None:
