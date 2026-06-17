@@ -28,10 +28,16 @@ def app(argv: list[str] | None = None) -> int:
     # Import pesado adiado: mantem o startup do CLI leve.
     from medusacut.pipeline import generate_clips
 
+    def progress(frac: float, label: str) -> None:
+        end = "\n" if frac >= 1.0 else ""
+        print(f"\r{int(frac * 100):3d}% — {label}        ", end=end, file=sys.stderr, flush=True)
+
     try:
-        clips = generate_clips(args.url, out_dir=args.out, max_clips=args.clips)
+        clips = generate_clips(
+            args.url, out_dir=args.out, max_clips=args.clips, progress=progress
+        )
     except RuntimeError as exc:
-        print(f"erro: {exc}", file=sys.stderr)
+        print(f"\nerro: {exc}", file=sys.stderr)
         return 1
 
     if not clips:

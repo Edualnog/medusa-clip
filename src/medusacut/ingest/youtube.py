@@ -7,13 +7,19 @@ erro claro pra o dono decidir — nada de fallback/scraping alternativo.
 from __future__ import annotations
 
 import os
+from typing import Callable
 
 from medusacut.types import Media
 
 
-def download(url: str, dest_dir: str) -> Media:
+def download(
+    url: str,
+    dest_dir: str,
+    on_progress: Callable[[float, str], None] | None = None,
+) -> Media:
     """Baixa `url` para `dest_dir` e devolve um Media com fps/dimensoes/duracao.
 
+    `on_progress(frac, label)` (opcional) reporta o andamento do download 0..1.
     Deps pesadas (yt_dlp) importadas aqui dentro, nunca no topo do modulo.
     """
     import yt_dlp  # noqa: PLC0415 — heavy dep, import local de proposito
@@ -30,6 +36,8 @@ def download(url: str, dest_dir: str) -> Media:
         "noprogress": True,
         "noplaylist": True,
     }
+    if on_progress is not None:
+        ydl_opts["progress_hooks"] = [_make_progress_hook(on_progress)]
 
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -93,6 +101,26 @@ def _probe(path: str, info: dict) -> tuple[float, int, int, float]:
             f"metadados invalidos apos download (w={width}, h={height}, dur={duration})"
         )
     return fps, width, height, duration
+
+
+def _make_progress_hook(on_progress: Callable[[float, str], None]):
+    """Traduz o hook do yt-dlp num progress(frac, label) 0..1.
+
+    O yt-dlp pode baixar video e audio em arquivos separados, entao a fracao pode
+    "reiniciar" entre eles — pra uma barra pessoal isso e aceitavel.
+    """
+
+    def hook(d: dict) -> None:
+        status = d.get("status")
+        if status == "downloading":
+            total = d.get("total_bytes") or d.get("total_bytes_estimate") or 0
+            done = d.get("downloaded_bytes") or 0
+            frac = (done / total) if total else 0.0
+            on_progress(frac, "Baixando video…")
+        elif status == "finished":
+            on_progress(1.0, "Download concluido")
+
+    return hook
 
 
 def _parse_fraction(value: str | None) -> float | None:

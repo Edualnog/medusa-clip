@@ -1,7 +1,9 @@
-"""Fusao de sinais -> top-N candidatos.
+"""Fusao de sinais -> top-N candidatos com DURACAO AUTOMATICA.
 
-Combina trilhas de score (ponderadas) numa trilha unica e escolhe os melhores
-momentos NAO-sobrepostos, cada um virando uma janela de `clip_len` segundos.
+Combina trilhas de score (ponderadas) numa trilha unica, escolhe os maiores picos
+NAO-sobrepostos e, pra cada um, deixa a janela CRESCER enquanto a energia/acao se
+sustenta (entre `min_len` e `max_len`). Assim o sistema decide o tamanho do corte
+pelo conteudo — nada de fixar 30s e estragar um corte bom.
 
 No Marco 1 entra so a trilha de audio; a interface ja aceita varias trilhas
 (scene_change, chat_velocity) pra fusao premiar coincidencia depois.
@@ -12,6 +14,15 @@ Stdlib puro de proposito: da pra testar sem baixar video nem rodar ffmpeg.
 from __future__ import annotations
 
 from medusacut.types import Candidate, ScoreTrack
+
+# Limites e formato do corte (segundos). TikTok: 9:16, cortes curtos.
+MIN_LEN = 8.0
+MAX_LEN = 60.0
+# Fracao do pico ate onde a janela cresce ("ainda tem acao aqui?").
+SUSTAIN_FRAC = 0.30
+# Folga antes/depois pra dar contexto e nao cortar seco.
+PAD_IN = 1.0
+PAD_OUT = 0.5
 
 
 def combine(
@@ -49,22 +60,23 @@ def select_candidates(
     tracks: list[ScoreTrack],
     *,
     max_clips: int,
-    clip_len: float,
     duration: float | None = None,
     weights: list[float] | None = None,
     min_score: float = 0.0,
+    min_len: float = MIN_LEN,
+    max_len: float = MAX_LEN,
 ) -> list[Candidate]:
-    """Escolhe ate `max_clips` janelas de `clip_len` s nos maiores picos.
+    """Escolhe ate `max_clips` momentos; cada corte tem DURACAO AUTOMATICA.
 
-    Guloso: pega o maior score, fixa uma janela centrada nele, descarta o que
-    sobrepoe, repete. So considera picos com score > `min_score` — por padrao 0,
-    ou seja, acima da media (z-score). Assim um video calmo rende MENOS cortes em
-    vez de encher `max_clips` com trechos sem energia. Devolve ordenado por score.
+    Guloso: pega o maior pico (score > `min_score`, i.e. acima da media), deixa a
+    janela crescer pros lados enquanto o score se mantem acima de `SUSTAIN_FRAC`
+    do pico, prende o tamanho em [`min_len`, `max_len`], descarta o que sobrepoe e
+    repete. Devolve ordenado por score (desc).
     """
     if max_clips <= 0:
         return []
-    if clip_len <= 0:
-        raise ValueError("clip_len precisa ser > 0")
+    if min_len <= 0 or max_len < min_len:
+        raise ValueError("limites de duracao invalidos")
 
     times, scores = combine(tracks, weights)
     if not times:
@@ -74,14 +86,15 @@ def select_candidates(
     if duration is None:
         duration = times[-1] + hop / 2.0
 
-    half = clip_len / 2.0
     order = sorted(range(len(times)), key=lambda i: scores[i], reverse=True)
 
     chosen: list[Candidate] = []
     for i in order:
         if len(chosen) >= max_clips or scores[i] <= min_score:
             break
-        start, end = _window(times[i], half, clip_len, duration)
+        start, end = _auto_window(
+            i, times, scores, hop, duration, min_len, max_len
+        )
         if any(_overlaps(start, end, c.start, c.end) for c in chosen):
             continue
         chosen.append(Candidate(start=start, end=end, score=scores[i]))
@@ -90,17 +103,43 @@ def select_candidates(
     return chosen
 
 
-def _window(center: float, half: float, clip_len: float, duration: float) -> tuple[float, float]:
-    """Janela de `clip_len` centrada em `center`, presa dentro de [0, duration]."""
-    if clip_len >= duration:
-        return 0.0, duration
-    start = center - half
+def _auto_window(
+    peak: int,
+    times: list[float],
+    scores: list[float],
+    hop: float,
+    duration: float,
+    min_len: float,
+    max_len: float,
+) -> tuple[float, float]:
+    """Cresce a janela ao redor de `peak` enquanto a acao se sustenta."""
+    thresh = max(0.0, scores[peak] * SUSTAIN_FRAC)
+
+    left = peak
+    while left - 1 >= 0 and scores[left - 1] >= thresh:
+        left -= 1
+    right = peak
+    while right + 1 < len(scores) and scores[right + 1] >= thresh:
+        right += 1
+
+    start = times[left] - hop / 2.0 - PAD_IN
+    end = times[right] + hop / 2.0 + PAD_OUT
+    center = times[peak]
+
+    # prende o tamanho em [min_len, max_len], crescendo/encolhendo em torno do pico
+    length = end - start
+    if length < min_len:
+        start, end = center - min_len / 2.0, center + min_len / 2.0
+    elif length > max_len:
+        start, end = center - max_len / 2.0, center + max_len / 2.0
+
+    # prende dentro de [0, duration] sem perder o tamanho-alvo
+    target = min(max(end - start, min_len), max_len)
     if start < 0.0:
-        start = 0.0
-    end = start + clip_len
+        start, end = 0.0, min(duration, target)
     if end > duration:
         end = duration
-        start = end - clip_len
+        start = max(0.0, end - target)
     return start, end
 
 

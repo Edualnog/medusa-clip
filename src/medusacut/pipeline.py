@@ -2,20 +2,23 @@
 
 Funcao sincrona e simples — uso pessoal, um video por vez. Sem fila/worker.
 
-Marco 1: ingest -> preprocess -> sinal de audio -> fusao -> render (GameplayOnly).
-As etapas de transcricao, gancho e facecam (passos 3/6/7 abaixo) chegam nos
+Fluxo atual: ingest -> preprocess -> sinal de audio -> fusao (duracao automatica)
+-> render (GameplayOnly). Transcricao/gancho/facecam (passos 3/6/7) chegam nos
 Marcos 2-4; a assinatura ja contempla `game_context`/`layout` pra elas.
+
+Progresso: passe `progress(frac, label)` pra acompanhar 0..1 (CLI/painel local).
 """
 
 from __future__ import annotations
 
 import json
 import os
+from typing import Callable
 
 from medusacut.types import Candidate, Clip, Media
 
-# Duracao fixa de cada corte no Marco 1 (segundos).
-DEFAULT_CLIP_LEN = 30.0
+# Callback de progresso: progress(fraction_0a1, rotulo_da_etapa).
+Progress = Callable[[float, str], None]
 
 
 def generate_clips(
@@ -25,22 +28,22 @@ def generate_clips(
     max_clips: int = 10,
     layout: str = "facecam_top_gameplay_bottom",
     game_context: str = "",
-    clip_len: float = DEFAULT_CLIP_LEN,
+    progress: Progress | None = None,
 ) -> list[Clip]:
     """
-    Fluxo (Marco 1 implementado; demais passos marcados):
+    Fluxo (duracao do corte decidida pelo conteudo; demais passos marcados):
       1. ingest YouTube (yt-dlp): baixa o video
       2. preprocess (ffmpeg): extrai audio, le fps/dimensoes
       3. transcribe (faster-whisper): timestamps por palavra            [M2]
       4. extrair sinais (audio_energy [+ scene_change/chat_velocity])
-      5. fundir -> top-N candidatos
+      5. fundir -> top-N candidatos (DURACAO AUTOMATICA)
       6. >>> gerar GANCHO + score por candidato (hooks.generate_hook) <<< [M3]
       7. detectar facecam -> planejar layout                            [M4]
       8. render (ffmpeg) [+ legenda karaoke no M2]
       9. escrever clipes em out_dir/ + manifest.json
 
-    `clip_len` (keyword opcional) deixa o painel local ajustar a duracao sem
-    mudar a assinatura documentada. Cada etapa atras de interface.
+    `progress` (keyword opcional) reporta 0..1 + rotulo pra UI/CLI. Cada etapa
+    atras de interface.
     """
     from medusacut import preprocess
     from medusacut.ingest import youtube
@@ -48,21 +51,31 @@ def generate_clips(
 
     cache_dir = os.path.join(out_dir, ".cache")
 
-    # 1-2. baixar + extrair audio
-    media = youtube.download(url, cache_dir)
+    # 1. baixar (reporta 0.00 -> 0.45 conforme o yt-dlp baixa)
+    _report(progress, 0.0, "Baixando video…")
+    media = youtube.download(url, cache_dir, on_progress=_band(progress, 0.0, 0.45))
+
+    # 2. extrair audio
+    _report(progress, 0.45, "Extraindo audio…")
     wav_path = preprocess.extract_audio(media, cache_dir)
 
     # 4-5. sinal de audio -> fusao -> candidatos
+    _report(progress, 0.55, "Medindo energia…")
     audio_track = audio_energy.analyze(wav_path)
+    _report(progress, 0.65, "Selecionando os melhores momentos…")
     candidates = fusion.select_candidates(
-        [audio_track],
-        max_clips=max_clips,
-        clip_len=clip_len,
-        duration=media.duration,
+        [audio_track], max_clips=max_clips, duration=media.duration
     )
 
-    # 7-9. render + manifest
-    return render_candidates(media, candidates, out_dir=out_dir, layout=layout, url=url)
+    # 7-9. render + manifest (0.68 -> 1.00)
+    return render_candidates(
+        media,
+        candidates,
+        out_dir=out_dir,
+        layout=layout,
+        url=url,
+        progress=_band(progress, 0.68, 1.0),
+    )
 
 
 def render_candidates(
@@ -72,11 +85,13 @@ def render_candidates(
     out_dir: str,
     layout: str,
     url: str,
+    progress: Progress | None = None,
 ) -> list[Clip]:
     """Renderiza candidatos ja escolhidos e escreve o manifest.
 
     Separado de `generate_clips` de proposito: o painel local reusa o download e
-    a analise (em cache) e so re-renderiza ao mexer nos parametros.
+    a analise (em cache) e so re-renderiza ao mexer nos parametros. `progress`
+    reporta 0..1 ao longo dos renders.
     """
     from medusacut.reframe.layouts import get_layout
     from medusacut.render import ffmpeg as render
@@ -85,8 +100,10 @@ def render_candidates(
     layout_impl = get_layout(layout)
     video_filter = layout_impl.video_filter(media)
 
+    total = len(candidates)
     clips: list[Clip] = []
     for i, cand in enumerate(candidates, start=1):
+        _report(progress, (i - 1) / total if total else 1.0, f"Renderizando corte {i}/{total}…")
         file_name = f"clip_{i:02d}.mp4"
         out_path = os.path.join(out_dir, file_name)
         render.render_clip(media, cand, video_filter, out_path)
@@ -101,7 +118,20 @@ def render_candidates(
         )
 
     _write_manifest(out_dir, url=url, layout=layout_impl.name, clips=clips)
+    _report(progress, 1.0, "Pronto")
     return clips
+
+
+def _report(progress: Progress | None, frac: float, label: str) -> None:
+    if progress is not None:
+        progress(min(1.0, max(0.0, frac)), label)
+
+
+def _band(progress: Progress | None, lo: float, hi: float) -> Progress | None:
+    """Reescala um progresso 0..1 de uma sub-etapa pra faixa [lo, hi] do total."""
+    if progress is None:
+        return None
+    return lambda f, label: progress(lo + (hi - lo) * min(1.0, max(0.0, f)), label)
 
 
 def _write_manifest(out_dir: str, *, url: str, layout: str, clips: list[Clip]) -> None:

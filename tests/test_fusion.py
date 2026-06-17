@@ -1,8 +1,8 @@
-"""Testes da fusao. Stdlib puro: nao baixa video nem chama ffmpeg/numpy."""
+"""Testes da fusao (duracao automatica). Stdlib puro: nao baixa video nem ffmpeg."""
 
 from __future__ import annotations
 
-from medusacut.signals.fusion import combine, select_candidates
+from medusacut.signals.fusion import MAX_LEN, MIN_LEN, combine, select_candidates
 from medusacut.types import ScoreTrack
 
 
@@ -11,50 +11,64 @@ def _track(scores: list[float], hop: float = 1.0, name: str = "t") -> ScoreTrack
     return ScoreTrack(times=times, scores=scores, hop=hop, name=name)
 
 
-def test_picks_top_n_peaks_non_overlapping():
-    # picos em t~10, t~50, t~90; resto baixo.
-    scores = [0.0] * 100
-    scores[10] = 5.0
-    scores[50] = 4.0
-    scores[90] = 3.0
-    track = _track(scores)
-
-    cands = select_candidates([track], max_clips=3, clip_len=20.0, duration=100.0)
+def test_picks_top_peaks_non_overlapping_within_bounds():
+    scores = [0.0] * 200
+    scores[20] = 5.0
+    scores[100] = 4.0
+    scores[180] = 3.0
+    cands = select_candidates([_track(scores)], max_clips=3, duration=200.0)
 
     assert len(cands) == 3
-    # ordenados por score desc
-    assert [round(c.score) for c in cands] == [5, 4, 3]
-    # nenhuma sobreposicao entre janelas
+    assert [round(c.score) for c in cands] == [5, 4, 3]  # ordenado por score
+    for c in cands:
+        assert MIN_LEN - 1e-6 <= c.duration <= MAX_LEN + 1e-6
     ordered = sorted(cands, key=lambda c: c.start)
     for a, b in zip(ordered, ordered[1:]):
-        assert a.end <= b.start
-    # todas tem a duracao pedida
-    for c in cands:
-        assert abs(c.duration - 20.0) < 1e-6
+        assert a.end <= b.start  # sem sobreposicao
 
 
-def test_overlapping_peaks_collapse_to_one():
-    # dois picos a 5 s de distancia (dentro de uma janela de 20 s) + um longe.
-    scores = [0.0] * 100
-    scores[10] = 5.0
-    scores[15] = 4.0  # deve ser descartado: sobrepoe o pico de t=10
-    scores[80] = 3.0
-    track = _track(scores)
-
-    cands = select_candidates([track], max_clips=3, clip_len=20.0, duration=100.0)
+def test_plateau_yields_longer_clip_than_spike():
+    # plateau de acao sustentada (10..40) + um pico isolado e mais alto longe.
+    scores = [0.0] * 120
+    for i in range(10, 41):
+        scores[i] = 3.0
+    scores[90] = 5.0  # pico isolado, score maior -> escolhido primeiro
+    cands = select_candidates([_track(scores)], max_clips=2, duration=120.0)
 
     assert len(cands) == 2
-    starts = sorted(round(c.start) for c in cands)
-    # janela do pico forte (centro ~10 -> [0,20]) e a do pico distante (~80 -> [70,90])
-    assert starts == [0, 70]
+    by_score = {round(c.score): c for c in cands}
+    spike = by_score[5]
+    plateau = by_score[3]
+    # o pico isolado vira um corte curto (~min_len); o plateau, um corte longo
+    assert abs(spike.duration - MIN_LEN) < 1e-6
+    assert plateau.duration > spike.duration
 
 
-def test_clip_len_larger_than_video_returns_single_full_window():
-    track = _track([1.0, 2.0, 3.0], hop=1.0)  # duracao ~3 s
-    cands = select_candidates([track], max_clips=5, clip_len=30.0, duration=3.0)
+def test_max_len_caps_a_huge_plateau():
+    scores = [3.0] * 200  # acao "infinita"
+    cands = select_candidates([_track(scores)], max_clips=1, duration=200.0)
     assert len(cands) == 1
-    assert cands[0].start == 0.0
-    assert cands[0].end == 3.0
+    assert cands[0].duration <= MAX_LEN + 1e-6
+
+
+def test_min_score_excludes_below_average():
+    # so o pico positivo deve virar corte; o resto esta na media (0) ou abaixo.
+    scores = [-1.0] * 50
+    scores[25] = 2.0
+    cands = select_candidates([_track(scores)], max_clips=5, duration=50.0)
+    assert len(cands) == 1
+    assert cands[0].score == 2.0
+
+
+def test_window_stays_inside_video_bounds():
+    scores = [0.0] * 20
+    scores[0] = 5.0  # pico logo no inicio -> nao pode comecar antes de 0
+    scores[19] = 4.0  # pico no fim -> nao pode passar da duracao
+    dur = 20.0
+    cands = select_candidates([_track(scores)], max_clips=2, duration=dur)
+    for c in cands:
+        assert c.start >= 0.0
+        assert c.end <= dur + 1e-6
 
 
 def test_combine_weighted_sum_requires_aligned_grids():
@@ -66,4 +80,4 @@ def test_combine_weighted_sum_requires_aligned_grids():
 
 
 def test_max_clips_zero_returns_empty():
-    assert select_candidates([_track([1.0, 2.0])], max_clips=0, clip_len=1.0) == []
+    assert select_candidates([_track([1.0, 2.0])], max_clips=0) == []

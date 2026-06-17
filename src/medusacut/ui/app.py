@@ -11,6 +11,7 @@ mexer nos parametros so re-roda fusao + render — sem rebaixar o video.
 from __future__ import annotations
 
 import os
+import time
 
 import streamlit as st
 
@@ -21,23 +22,27 @@ from medusacut.signals import audio_energy, fusion
 st.set_page_config(page_title="Medusa Cut", page_icon="✂️", layout="wide")
 st.title("✂️ Medusa Cut — painel local")
 st.caption(
-    "Ferramenta pessoal e local. Cola o link, ajusta, gera. "
+    "Pessoal e local. Cola o link, ajusta, gera cortes 9:16 pro TikTok. "
     "Roda so no seu Mac (localhost) — sem nuvem, sem conta."
 )
 
 ss = st.session_state
 
 
-def ensure_media(url: str, out_dir: str) -> None:
+def ensure_media(url: str, out_dir: str, report) -> None:
     """Baixa + analisa uma vez por URL; reusa do cache nos ajustes seguintes."""
     if ss.get("media_url") == url and "media" in ss:
+        report(0.65, "Usando download em cache…")
         return
     cache_dir = os.path.join(out_dir, ".cache")
-    with st.spinner("Baixando video (yt-dlp)…"):
-        media = youtube.download(url, cache_dir)
-    with st.spinner("Extraindo audio e medindo energia…"):
-        wav = preprocess.extract_audio(media, cache_dir)
-        track = audio_energy.analyze(wav)
+    # download ocupa a faixa 0..0.55 do total
+    media = youtube.download(
+        url, cache_dir, on_progress=lambda f, label: report(0.55 * f, label)
+    )
+    report(0.58, "Extraindo audio…")
+    wav = preprocess.extract_audio(media, cache_dir)
+    report(0.63, "Medindo energia…")
+    track = audio_energy.analyze(wav)
     ss.media = media
     ss.track = track
     ss.media_url = url
@@ -50,28 +55,46 @@ with st.sidebar:
 
     st.header("Ajustes")
     max_clips = st.slider("Maximo de cortes", 1, 10, 3)
-    clip_len = st.slider("Duracao do corte (s)", 10, 60, 30, step=5)
+    st.caption("A **duracao de cada corte e automatica** — o sistema decide pelo conteudo.")
+    with st.expander("Avancado"):
+        min_len = st.slider("Duracao minima (s)", 5, 30, int(fusion.MIN_LEN))
+        max_len = st.slider("Duracao maxima (s)", 30, 90, int(fusion.MAX_LEN))
 
     gerar = st.button("Gerar cortes", type="primary", disabled=not url.strip())
 
 if gerar:
     clean_url = url.strip()
+    bar = st.progress(0.0, text="Iniciando…")
+    t0 = time.time()
+
+    def report(frac: float, label: str) -> None:
+        frac = min(1.0, max(0.0, frac))
+        eta = ""
+        elapsed = time.time() - t0
+        if 0.03 < frac < 1.0:
+            remain = int(elapsed * (1.0 - frac) / frac)
+            eta = f" · ~{remain}s restantes"
+        bar.progress(frac, text=f"{int(frac * 100)}% — {label}{eta}")
+
     try:
-        ensure_media(clean_url, out_dir)
-        with st.spinner("Selecionando momentos e renderizando…"):
-            candidates = fusion.select_candidates(
-                [ss.track],
-                max_clips=max_clips,
-                clip_len=float(clip_len),
-                duration=ss.media.duration,
-            )
-            clips = pipeline.render_candidates(
-                ss.media,
-                candidates,
-                out_dir=out_dir,
-                layout="gameplay_only",
-                url=clean_url,
-            )
+        ensure_media(clean_url, out_dir, report)
+        report(0.66, "Selecionando os melhores momentos…")
+        candidates = fusion.select_candidates(
+            [ss.track],
+            max_clips=max_clips,
+            duration=ss.media.duration,
+            min_len=float(min_len),
+            max_len=float(max_len),
+        )
+        clips = pipeline.render_candidates(
+            ss.media,
+            candidates,
+            out_dir=out_dir,
+            layout="gameplay_only",
+            url=clean_url,
+            progress=lambda f, label: report(0.68 + 0.32 * f, label),
+        )
+        report(1.0, "Pronto")
         ss.clips = clips
         ss.out_dir = out_dir
         if not clips:
@@ -105,8 +128,8 @@ if clips:
                 st.video(path)
             st.markdown(
                 f"**{clip.file}**  \n"
-                f"⏱ {clip.start:.1f}–{clip.end:.1f}s · "
-                f"score {clip.score:+.2f}"
+                f"⏱ {clip.start:.1f}–{clip.end:.1f}s "
+                f"({clip.end - clip.start:.0f}s) · score {clip.score:+.2f}"
             )
     manifest_path = os.path.join(ss.out_dir, "manifest.json")
     if os.path.exists(manifest_path):
