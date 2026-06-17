@@ -20,6 +20,10 @@ from medusacut.types import Candidate, Clip, Media
 # Callback de progresso: progress(fraction_0a1, rotulo_da_etapa).
 Progress = Callable[[float, str], None]
 
+# Quantos candidatos a fusao gera por corte final quando ha analise viral
+# (o LLM escolhe os melhores dentre eles).
+OVERSELECT_FACTOR = 3
+
 
 def generate_clips(
     url: str,
@@ -69,11 +73,13 @@ def generate_clips(
     _report(progress, 0.55, "Medindo energia…")
     audio_track = audio_energy.analyze(wav_path)
     _report(progress, 0.65, "Selecionando os melhores momentos…")
+    # Sobre-seleciona quando vai pontuar: a analise viral escolhe os melhores.
+    pool = max_clips * OVERSELECT_FACTOR if score_virality else max_clips
     candidates = fusion.select_candidates(
-        [audio_track], max_clips=max_clips, duration=media.duration
+        [audio_track], max_clips=pool, duration=media.duration
     )
 
-    # 6-9. score (LLM) + reframe + render + manifest (0.65 -> 1.00)
+    # 6-9. analise viral (2 etapas) + reframe + render + manifest (0.65 -> 1.00)
     return render_candidates(
         media,
         candidates,
@@ -88,6 +94,7 @@ def generate_clips(
         game_context=game_context,
         score_virality=score_virality,
         captions=captions,
+        final_count=max_clips,
         progress=_band(progress, 0.65, 1.0),
     )
 
@@ -107,9 +114,13 @@ def render_candidates(
     game_context: str = "",
     score_virality: bool = False,
     captions: bool = False,
+    final_count: int | None = None,
     progress: Progress | None = None,
 ) -> list[Clip]:
     """Score de viralizacao + reframe + render + LEGENDA + manifest.
+
+    Recebe candidatos (idealmente em excesso quando `score_virality`); a analise
+    de duas etapas escolhe os melhores `final_count` pra render.
 
     Separado de `generate_clips` de proposito: o painel local reusa o download e
     a analise (em cache) e so re-pontua/re-renderiza ao mexer nos parametros.
@@ -121,15 +132,17 @@ def render_candidates(
     cache_dir = os.path.join(out_dir, ".cache")
     layout_name = _resolve_layout(layout, facecam_corner)
 
-    # 3+6. transcrever (p/ legenda e/ou score) + score (LLM) -> re-rank.
+    keep = final_count or len(candidates)
+    # 3+6. transcrever (p/ legenda e/ou score) + analise viral 2 etapas -> re-rank.
     if (score_virality or captions) and audio_path:
         prepared, usage = _prepare_candidates(
-            candidates, audio_path, game_context,
-            score_virality=score_virality, progress=_band(progress, 0.0, 0.5),
+            media, candidates, audio_path, game_context,
+            score_virality=score_virality, final_count=keep, cache_dir=cache_dir,
+            progress=_band(progress, 0.0, 0.5),
         )
         render_progress = _band(progress, 0.5, 1.0)
     else:
-        prepared = [(c, None, None) for c in candidates]
+        prepared = [(c, None, None) for c in candidates[:keep]]
         usage = None
         render_progress = progress
 
@@ -161,46 +174,82 @@ def render_candidates(
     return clips
 
 
-def _prepare_candidates(candidates, audio_path, game_context, *, score_virality, progress):
-    """Transcreve cada candidato (p/ legenda) e, se pedido, pontua viralizacao.
+# Quantos finalistas o juiz multimodal avalia alem do necessario (margem de re-rank).
+JUDGE_BUFFER = 2
+# Keyframes enviados ao juiz por corte.
+KEYFRAMES = 4
 
-    Retorna [(cand_possivelmente_refinado, HookResult|None, words|None)]. Se houver
-    score, ordena por viralizacao (sem nota por ultimo). Erro nao derruba: vira
-    (cand, None, None).
+
+def _prepare_candidates(
+    media, candidates, audio_path, game_context, *, score_virality, final_count, cache_dir, progress
+):
+    """Transcreve + (se pedido) pontua viralizacao em DUAS etapas e ranqueia.
+
+    Etapa 1 (barata, texto): triagem de TODOS os candidatos -> shortlist.
+    Etapa 2 (forte, multimodal): juiz ve keyframes -> gancho/nota/refino.
+    Retorna ([(cand, HookResult|None, words|None)] com ate `final_count`), usage.
     """
     import sys
 
     from medusacut.hooks import base as hooks
     from medusacut.transcribe import whisper
 
-    total = len(candidates)
-    out: list[tuple[Candidate, object | None, list | None]] = []
-    usage_total = None
+    # transcreve todos (precisa pra triagem e/ou legenda) — reporta 0..0.4
+    records = []  # (cand, words, text)
+    n = len(candidates)
     for i, cand in enumerate(candidates, start=1):
-        _report(progress, (i - 1) / total if total else 1.0, f"Transcrevendo e avaliando {i}/{total}…")
-        words = None
-        hook = None
+        _report(progress, 0.4 * (i - 1) / n if n else 0.0, f"Transcrevendo {i}/{n}…")
         try:
             words = whisper.transcribe_segment(audio_path, cand.start, cand.end)
-            if score_virality:
-                from medusacut.signals.fusion import MIN_LEN
+        except Exception as exc:
+            print(f"[medusacut] corte {i} sem transcricao: {exc}", file=sys.stderr)
+            words = []
+        records.append((cand, words, whisper.transcript_text(words)))
 
-                text = whisper.transcript_text(words)
-                hook = hooks.score_candidate(cand, text, game_context)
-                if hook.refined_start is not None and hook.refined_end is not None:
-                    rs, re_ = _floor_len(
-                        hook.refined_start, hook.refined_end, cand.start, cand.end, MIN_LEN
-                    )
-                    cand = Candidate(rs, re_, cand.score)
-        except Exception as exc:  # whisper/LLM/rede: nao derruba o pipeline
-            print(f"[medusacut] corte {i} sem transcricao/score: {exc}", file=sys.stderr)
-        if hook is not None and getattr(hook, "usage", None) is not None:
-            usage_total = hook.usage if usage_total is None else usage_total + hook.usage
-        out.append((cand, hook, words))
+    if not score_virality:
+        out = [(c, None, w) for c, w, _ in records[:final_count]]
+        return out, None
 
-    if score_virality:
-        out.sort(key=lambda t: t[1].virality_score if t[1] is not None else -1.0, reverse=True)
-    return out, usage_total
+    usage_total = None
+
+    # etapa 1: triagem barata (texto) -> shortlist
+    triaged = []  # (cand, words, text, triage_score)
+    for i, (cand, words, text) in enumerate(records, start=1):
+        _report(progress, 0.4 + 0.2 * (i - 1) / n if n else 0.6, f"Triando {i}/{n}…")
+        ts = 0.0
+        try:
+            ts, u = hooks.triage_score(cand, text, game_context)
+            usage_total = u if usage_total is None else usage_total + u
+        except Exception as exc:
+            print(f"[medusacut] triagem falhou no corte {i}: {exc}", file=sys.stderr)
+        triaged.append((cand, words, text, ts))
+    triaged.sort(key=lambda t: t[3], reverse=True)
+    shortlist = triaged[: final_count + JUDGE_BUFFER]
+
+    # etapa 2: juiz forte multimodal (ve keyframes)
+    from medusacut import frames
+    from medusacut.signals.fusion import MIN_LEN
+
+    judged = []  # (cand, HookResult|None, words)
+    m = len(shortlist)
+    for i, (cand, words, text, _ts) in enumerate(shortlist, start=1):
+        _report(progress, 0.6 + 0.4 * (i - 1) / m if m else 1.0, f"Julgando {i}/{m} (visao)…")
+        hook = None
+        try:
+            kf_dir = os.path.join(cache_dir, f"kf_{int(cand.start * 1000)}")
+            imgs = frames.extract_keyframes(media.path, cand.start, cand.end, n=KEYFRAMES, out_dir=kf_dir)
+            hook = hooks.judge_candidate(cand, text, imgs, game_context)
+            if hook.usage is not None:
+                usage_total = hook.usage if usage_total is None else usage_total + hook.usage
+            if hook.refined_start is not None and hook.refined_end is not None:
+                rs, re_ = _floor_len(hook.refined_start, hook.refined_end, cand.start, cand.end, MIN_LEN)
+                cand = Candidate(rs, re_, cand.score)
+        except Exception as exc:
+            print(f"[medusacut] juiz falhou no corte {i}: {exc}", file=sys.stderr)
+        judged.append((cand, hook, words))
+
+    judged.sort(key=lambda t: t[1].virality_score if t[1] is not None else -1.0, reverse=True)
+    return judged[:final_count], usage_total
 
 
 def _floor_len(rs: float, re_: float, lo: float, hi: float, min_len: float) -> tuple[float, float]:
@@ -295,11 +344,18 @@ def _band(progress: Progress | None, lo: float, hi: float) -> Progress | None:
 
 
 def _write_manifest(out_dir: str, *, url: str, layout: str, clips: list[Clip], usage=None) -> None:
+    cost = None
+    if usage is not None:
+        from medusacut.llm import DEFAULT_JUDGE_MODEL, DEFAULT_TRIAGE_MODEL
+
+        cost = usage.as_dict()
+        cost["triage_model"] = os.environ.get("LLM_MODEL_TRIAGE", DEFAULT_TRIAGE_MODEL)
+        cost["judge_model"] = os.environ.get("LLM_MODEL_JUDGE", DEFAULT_JUDGE_MODEL)
     manifest = {
         "source": url,
         "layout": layout,
         "count": len(clips),
-        "cost": usage.as_dict() if usage is not None else None,
+        "cost": cost,
         "clips": [c.to_manifest_entry() for c in clips],
     }
     with open(os.path.join(out_dir, "manifest.json"), "w", encoding="utf-8") as fh:

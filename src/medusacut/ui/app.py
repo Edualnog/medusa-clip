@@ -134,9 +134,10 @@ if gerar:
     try:
         ensure_media(clean_url, out_dir, report)
         report(0.66, "Selecionando os melhores momentos…")
+        pool = max_clips * pipeline.OVERSELECT_FACTOR if score_virality else max_clips
         candidates = fusion.select_candidates(
             [ss.track],
-            max_clips=max_clips,
+            max_clips=pool,
             duration=ss.media.duration,
             min_len=float(min_len),
             max_len=float(max_len),
@@ -155,6 +156,7 @@ if gerar:
             game_context=game_context.strip(),
             score_virality=score_virality,
             captions=captions,
+            final_count=max_clips,
             progress=lambda f, label: report(0.66 + 0.34 * f, label),
         )
         report(1.0, "Pronto")
@@ -189,7 +191,10 @@ cost = ss.get("cost")
 if cost:
     st.subheader("💸 Custo desta geracao (LLM)")
     c1, c2, c3 = st.columns(3)
-    c1.metric("Modelo", cost.get("model") or "—")
+    models = " · ".join(
+        m for m in (cost.get("triage_model"), cost.get("judge_model")) if m
+    ) or cost.get("model") or "—"
+    c1.metric("Modelos (triagem · juiz)", models)
     c2.metric("Tokens totais", f"{cost.get('total_tokens', 0):,}")
     usd = cost.get("cost_usd")
     c3.metric("Custo (USD)", f"${usd:.4f}" if usd is not None else "n/d")

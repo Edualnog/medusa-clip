@@ -23,6 +23,18 @@ _SYSTEM = (
     "portugues do Brasil, tom gamer (nao corporativo). Responda SOMENTE JSON."
 )
 
+_JUDGE_SYSTEM = (
+    _SYSTEM
+    + " Voce TAMBEM recebe alguns frames do trecho — use o que ACONTECE na tela "
+    "(acao, perigo, reacao, resultado), nao so a fala, pra julgar. Gameplay e visual."
+)
+
+_TRIAGE_SYSTEM = (
+    "Voce tria trechos de gameplay por potencial viral pra TikTok, rapido e barato. "
+    "Olhe a transcricao e estime a chance de prender/viralizar. Calibrado: poucos sao bons. "
+    'Responda SOMENTE JSON: {"virality_score": inteiro 0-100}.'
+)
+
 
 @dataclass
 class HookResult:
@@ -34,15 +46,8 @@ class HookResult:
     usage: object | None = None  # llm.Usage da chamada
 
 
-def score_candidate(
-    candidate: Candidate,
-    transcript_slice: str,
-    game_context: str = "",
-) -> HookResult:
-    """Pede ao LLM o gancho, o motivo, a nota e um in/out mais justo."""
-    from medusacut.llm import chat_json
-
-    user = (
+def _judge_user(candidate: Candidate, transcript_slice: str, game_context: str) -> str:
+    return (
         f"Contexto do jogo/canal: {game_context or 'desconhecido'}\n"
         f"Trecho candidato: {candidate.start:.1f}s a {candidate.end:.1f}s "
         f"(duracao {candidate.duration:.1f}s).\n"
@@ -54,8 +59,9 @@ def score_candidate(
         '  "best_start_s": melhor inicio (segundos absolutos, dentro do trecho),\n'
         '  "best_end_s": melhor fim (segundos absolutos, dentro do trecho).\n'
     )
-    data, usage = chat_json(_SYSTEM, user)
 
+
+def _hook_from_data(data: dict, candidate: Candidate, usage) -> HookResult:
     score = _clamp(_to_float(data.get("virality_score"), 0.0), 0.0, 100.0)
     rs = _refined(data.get("best_start_s"), candidate.start, candidate.end)
     re_ = _refined(data.get("best_end_s"), candidate.start, candidate.end)
@@ -69,6 +75,48 @@ def score_candidate(
         refined_end=re_,
         usage=usage,
     )
+
+
+def triage_score(candidate: Candidate, transcript_slice: str, game_context: str = ""):
+    """Etapa 1 (barata, so texto): nota rapida 0-100. Devolve (score, Usage)."""
+    import os
+
+    from medusacut.llm import DEFAULT_TRIAGE_MODEL, chat_json
+
+    user = (
+        f"Contexto: {game_context or 'desconhecido'}. "
+        f'Trecho ({candidate.duration:.0f}s). Transcricao:\n"""\n{transcript_slice or "(sem fala)"}\n"""'
+    )
+    model = os.environ.get("LLM_MODEL_TRIAGE", DEFAULT_TRIAGE_MODEL)
+    data, usage = chat_json(_TRIAGE_SYSTEM, user, model=model, temperature=0.2)
+    return _clamp(_to_float(data.get("virality_score"), 0.0), 0.0, 100.0), usage
+
+
+def judge_candidate(
+    candidate: Candidate,
+    transcript_slice: str,
+    frame_paths: list[str],
+    game_context: str = "",
+) -> HookResult:
+    """Etapa 2 (forte, MULTIMODAL): ve os frames + transcricao -> gancho/nota/refino."""
+    from medusacut.llm import chat_json_multimodal
+
+    user = _judge_user(candidate, transcript_slice, game_context)
+    data, usage = chat_json_multimodal(_JUDGE_SYSTEM, user, frame_paths)
+    return _hook_from_data(data, candidate, usage)
+
+
+def score_candidate(
+    candidate: Candidate,
+    transcript_slice: str,
+    game_context: str = "",
+) -> HookResult:
+    """Caminho single-stage (texto, sem frames) — usado como fallback/historico."""
+    from medusacut.llm import chat_json
+
+    user = _judge_user(candidate, transcript_slice, game_context)
+    data, usage = chat_json(_SYSTEM, user)
+    return _hook_from_data(data, candidate, usage)
 
 
 def generate_hook(

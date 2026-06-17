@@ -6,7 +6,14 @@ import pytest
 from pytest import approx
 
 from medusacut.hooks.base import _clamp, _refined
-from medusacut.llm import Usage, extract_usage, load_dotenv, parse_json
+from medusacut.llm import (
+    Usage,
+    extract_usage,
+    image_data_uri,
+    is_reasoning_model,
+    load_dotenv,
+    parse_json,
+)
 
 
 def test_parse_json_plain():
@@ -75,6 +82,24 @@ def test_extract_usage_handles_missing():
 
     u = extract_usage(R(), "m")
     assert u.total_tokens == 0 and u.calls == 1 and u.cost_usd is None
+
+
+def test_is_reasoning_model():
+    assert is_reasoning_model("openai/o3") is True
+    assert is_reasoning_model("openai/o4-mini") is True
+    assert is_reasoning_model("o1-preview") is True
+    assert is_reasoning_model("openai/gpt-4.1") is False
+    assert is_reasoning_model("openai/gpt-4o-mini") is False  # '4o' != 'o4'
+
+
+def test_image_data_uri(tmp_path):
+    import base64
+
+    p = tmp_path / "f.jpg"
+    p.write_bytes(b"\xff\xd8\xff\xe0jpeg-bytes")
+    uri = image_data_uri(str(p))
+    assert uri.startswith("data:image/jpeg;base64,")
+    assert base64.b64decode(uri.split(",", 1)[1]) == b"\xff\xd8\xff\xe0jpeg-bytes"
 
 
 def test_clamp_and_refined():

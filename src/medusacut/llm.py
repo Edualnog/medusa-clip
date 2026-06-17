@@ -9,6 +9,7 @@ irrelevante — use o melhor modelo.
 
 from __future__ import annotations
 
+import base64
 import json
 import os
 import re
@@ -16,6 +17,9 @@ from dataclasses import dataclass
 
 DEFAULT_BASE_URL = "https://openrouter.ai/api/v1"
 DEFAULT_MODEL = "openai/gpt-4o"
+# Multi-modelo por etapa: triagem barata -> juiz forte multimodal.
+DEFAULT_TRIAGE_MODEL = "openai/gpt-4o-mini"
+DEFAULT_JUDGE_MODEL = "openai/gpt-4.1"
 
 
 @dataclass
@@ -86,22 +90,56 @@ def get_client():
 def chat_json(
     system: str, user: str, *, model: str | None = None, temperature: float = 0.4
 ) -> tuple[dict, Usage]:
-    """Manda system+user e devolve (JSON, Usage com tokens+custo)."""
-    client = get_client()
+    """Manda system+user (texto) e devolve (JSON, Usage com tokens+custo)."""
     model = model or os.environ.get("LLM_MODEL", DEFAULT_MODEL)
-    resp = client.chat.completions.create(
+    return _chat(model, system, user, temperature)
+
+
+def chat_json_multimodal(
+    system: str,
+    user_text: str,
+    image_paths: list[str],
+    *,
+    model: str | None = None,
+    temperature: float = 0.3,
+) -> tuple[dict, Usage]:
+    """Igual ao chat_json, mas anexa imagens (keyframes) pro modelo VER a cena."""
+    model = model or os.environ.get("LLM_MODEL_JUDGE", DEFAULT_JUDGE_MODEL)
+    content: list[dict] = [{"type": "text", "text": user_text}]
+    for p in image_paths:
+        content.append({"type": "image_url", "image_url": {"url": image_data_uri(p)}})
+    return _chat(model, system, content, temperature)
+
+
+def _chat(model: str, system: str, content, temperature: float | None) -> tuple[dict, Usage]:
+    client = get_client()
+    kwargs = dict(
         model=model,
         messages=[
             {"role": "system", "content": system},
-            {"role": "user", "content": user},
+            {"role": "user", "content": content},
         ],
-        temperature=temperature,
         response_format={"type": "json_object"},
         # OpenRouter: devolve o custo (USD) junto do usage.
         extra_body={"usage": {"include": True}},
     )
+    # Modelos de raciocinio (o1/o3/o4…) nao aceitam temperature custom.
+    if temperature is not None and not is_reasoning_model(model):
+        kwargs["temperature"] = temperature
+    resp = client.chat.completions.create(**kwargs)
     data = parse_json(resp.choices[0].message.content or "")
     return data, extract_usage(resp, model)
+
+
+def is_reasoning_model(model: str) -> bool:
+    name = model.split("/")[-1].lower()
+    return name.startswith(("o1", "o3", "o4"))
+
+
+def image_data_uri(path: str) -> str:
+    with open(path, "rb") as fh:
+        b64 = base64.b64encode(fh.read()).decode("ascii")
+    return f"data:image/jpeg;base64,{b64}"
 
 
 def extract_usage(resp, model: str) -> Usage:
