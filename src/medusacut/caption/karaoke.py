@@ -28,7 +28,8 @@ COLOR_STROKE = (0, 0, 0)            # contorno preto
 MAX_WORDS_PER_PHRASE = 3            # poucas palavras na tela (estilo short)
 MAX_GAP = 0.7                       # silencio que quebra a frase (s)
 LINE_MAX_W = 980                    # largura util (margem)
-Y_CENTER_FRAC = 0.60               # centro vertical da legenda (safe zone TikTok)
+Y_CENTER_FRAC = 0.80               # centro vertical da legenda (mais p/ baixo;
+#                                    nao tampa a cena, mas acima da UI do TikTok)
 
 
 def group_words(
@@ -76,9 +77,12 @@ def _load_font(size: int):
 
 
 def render_caption_images(
-    words: list[Word], *, clip_start: float, clip_dur: float, out_dir: str
+    words: list[Word], *, clip_start: float, clip_dur: float, out_dir: str,
+    y_frac: float = Y_CENTER_FRAC,
 ) -> list[tuple[float, float, str]]:
-    """Gera as imagens (uma por palavra ativa) e devolve [(t0, t1, png), …]."""
+    """Gera as imagens (uma por palavra ativa) e devolve [(t0, t1, png), …].
+
+    `y_frac` e o centro vertical da legenda (0=topo, 1=base)."""
     from PIL import Image, ImageDraw  # noqa: PLC0415
 
     os.makedirs(out_dir, exist_ok=True)
@@ -94,7 +98,7 @@ def render_caption_images(
                 continue
             img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
             draw = ImageDraw.Draw(img)
-            _draw_lines(draw, lines, font, active_word=phrase[active])
+            _draw_lines(draw, lines, font, active_word=phrase[active], y_frac=y_frac)
             path = os.path.join(out_dir, f"cap_{idx:03d}.png")
             img.save(path)
             states.append((t0, t1, path))
@@ -119,11 +123,11 @@ def _wrap(phrase: list[Word], font) -> list[list[Word]]:
     return lines
 
 
-def _draw_lines(draw, lines: list[list[Word]], font, *, active_word: Word) -> None:
+def _draw_lines(draw, lines: list[list[Word]], font, *, active_word: Word, y_frac: float = Y_CENTER_FRAC) -> None:
     ascent, descent = font.getmetrics()
     line_h = ascent + descent + 14
     total_h = line_h * len(lines)
-    y = int(H * Y_CENTER_FRAC - total_h / 2)
+    y = int(H * y_frac - total_h / 2)
     space = font.getlength(" ")
     for line in lines:
         widths = [font.getlength(w.text.upper()) for w in line]

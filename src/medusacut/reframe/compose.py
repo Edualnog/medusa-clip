@@ -32,14 +32,19 @@ def render_facecam_layout(
     out_path: str,
     cache_dir: str,
     dynamic: bool = True,
+    facecam_box: tuple[float, float, float, float] | None = None,
+    facecam_h: int = FACECAM_H,
 ) -> str:
-    """Rosto (canto `facecam_corner`) em cima + gameplay dinamico embaixo + blur."""
-    rect = facecam_rect(facecam_corner)
+    """Rosto em cima + gameplay dinamico embaixo + blur.
+
+    A caixa do facecam vem de `facecam_box` (x0,y0,x1,y1 normalizados) se dado,
+    senao do preset do `facecam_corner`. `facecam_h` controla a altura do painel."""
+    rect = facecam_box or facecam_rect(facecam_corner)
     if rect is None:
-        raise ValueError(f"facecam_corner invalido p/ este layout: {facecam_corner!r}")
+        raise ValueError(f"facecam_corner/box invalido p/ este layout: {facecam_corner!r}")
 
     os.makedirs(cache_dir, exist_ok=True)
-    game_h = TARGET_H - FACECAM_H
+    game_h = TARGET_H - facecam_h
 
     # Pass 1: painel de gameplay (reframe dinamico) em 1080 x game_h.
     base = os.path.splitext(os.path.basename(out_path))[0]
@@ -62,10 +67,10 @@ def render_facecam_layout(
         f"[bg]scale={TARGET_W}:{TARGET_H}:force_original_aspect_ratio=increase,"
         f"crop={TARGET_W}:{TARGET_H},gblur=sigma={BLUR_SIGMA}[bgb];"
         f"[cam]crop={cw}:{ch}:{cx}:{cy},"
-        f"scale={TARGET_W}:{FACECAM_H}:force_original_aspect_ratio=decrease[camS];"
-        f"[bgb][camS]overlay=x=(W-w)/2:y=({FACECAM_H}-h)/2[mid];"
+        f"scale={TARGET_W}:{facecam_h}:force_original_aspect_ratio=decrease[camS];"
+        f"[bgb][camS]overlay=x=(W-w)/2:y=({facecam_h}-h)/2[mid];"
         f"[1:v]scale={TARGET_W}:{game_h}[game];"
-        f"[mid][game]overlay=x=0:y={FACECAM_H}[outv]"
+        f"[mid][game]overlay=x=0:y={facecam_h}[outv]"
     )
     dur = max(0.0, candidate.end - candidate.start)
     cmd = [

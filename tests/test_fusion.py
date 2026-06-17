@@ -45,10 +45,10 @@ def test_plateau_yields_longer_clip_than_spike():
 
 
 def test_sustained_region_expands_well_beyond_min():
-    # uma regiao sustentada de ~13s deve virar um corte bem maior que o min_len,
-    # e nao colapsar no minimo (regressao do bug "tudo sai com 8s").
+    # uma regiao sustentada longa deve virar um corte bem maior que o min_len,
+    # e nao colapsar no minimo (regressao do bug "tudo sai curto").
     scores = [0.0] * 120
-    for i in range(44, 57):  # 13 janelas de 1s acima do limiar
+    for i in range(40, 65):  # 25 janelas de 1s acima do limiar
         scores[i] = 2.0
     cands = select_candidates([_track(scores)], max_clips=1, duration=120.0)
     assert len(cands) == 1

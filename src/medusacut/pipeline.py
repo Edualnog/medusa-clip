@@ -29,6 +29,9 @@ def generate_clips(
     layout: str = "facecam_top_gameplay_bottom",
     game_context: str = "",
     facecam_corner: str | None = None,
+    facecam_box: tuple[float, float, float, float] | None = None,
+    facecam_h: int = 640,
+    caption_y: float = 0.80,
     score_virality: bool = True,
     captions: bool = True,
     progress: Progress | None = None,
@@ -78,6 +81,9 @@ def generate_clips(
         layout=layout,
         url=url,
         facecam_corner=facecam_corner,
+        facecam_box=facecam_box,
+        facecam_h=facecam_h,
+        caption_y=caption_y,
         audio_path=wav_path,
         game_context=game_context,
         score_virality=score_virality,
@@ -94,6 +100,9 @@ def render_candidates(
     layout: str,
     url: str,
     facecam_corner: str | None = None,
+    facecam_box: tuple[float, float, float, float] | None = None,
+    facecam_h: int = 640,
+    caption_y: float = 0.80,
     audio_path: str | None = None,
     game_context: str = "",
     score_virality: bool = False,
@@ -129,9 +138,10 @@ def render_candidates(
         _report(render_progress, (i - 1) / total if total else 1.0, f"Renderizando corte {i}/{total}…")
         file_name = f"clip_{i:02d}.mp4"
         out_path = os.path.join(out_dir, file_name)
-        _render_layout(media, cand, layout_name, facecam_corner, out_path, cache_dir)
+        _render_layout(media, cand, layout_name, facecam_corner, out_path, cache_dir,
+                       facecam_box=facecam_box, facecam_h=facecam_h)
         if captions and words:
-            _burn_captions(out_path, words, cand, cache_dir)
+            _burn_captions(out_path, words, cand, cache_dir, caption_y)
         clips.append(
             Clip(
                 index=i,
@@ -171,10 +181,15 @@ def _prepare_candidates(candidates, audio_path, game_context, *, score_virality,
         try:
             words = whisper.transcribe_segment(audio_path, cand.start, cand.end)
             if score_virality:
+                from medusacut.signals.fusion import MIN_LEN
+
                 text = whisper.transcript_text(words)
                 hook = hooks.score_candidate(cand, text, game_context)
                 if hook.refined_start is not None and hook.refined_end is not None:
-                    cand = Candidate(hook.refined_start, hook.refined_end, cand.score)
+                    rs, re_ = _floor_len(
+                        hook.refined_start, hook.refined_end, cand.start, cand.end, MIN_LEN
+                    )
+                    cand = Candidate(rs, re_, cand.score)
         except Exception as exc:  # whisper/LLM/rede: nao derruba o pipeline
             print(f"[medusacut] corte {i} sem transcricao/score: {exc}", file=sys.stderr)
         out.append((cand, hook, words))
@@ -184,7 +199,25 @@ def _prepare_candidates(candidates, audio_path, game_context, *, score_virality,
     return out
 
 
-def _burn_captions(out_path, words, cand, cache_dir):
+def _floor_len(rs: float, re_: float, lo: float, hi: float, min_len: float) -> tuple[float, float]:
+    """Garante que [rs, re_] tenha pelo menos `min_len`, encaixado em [lo, hi].
+
+    Evita que o refino do LLM deixe o corte curto demais.
+    """
+    if re_ - rs >= min_len:
+        return rs, re_
+    span = min(min_len, hi - lo)
+    mid = (rs + re_) / 2.0
+    rs = mid - span / 2.0
+    re_ = mid + span / 2.0
+    if rs < lo:
+        rs, re_ = lo, lo + span
+    if re_ > hi:
+        re_, rs = hi, hi - span
+    return rs, re_
+
+
+def _burn_captions(out_path, words, cand, cache_dir, caption_y=0.80):
     """Queima a legenda karaoke no clipe ja renderizado (substitui no lugar)."""
     import os as _os
     import sys
@@ -195,7 +228,8 @@ def _burn_captions(out_path, words, cand, cache_dir):
         in_range = [w for w in words if w.end > cand.start and w.start < cand.end]
         cap_dir = _os.path.join(cache_dir, _os.path.splitext(_os.path.basename(out_path))[0] + "_cap")
         states = karaoke.render_caption_images(
-            in_range, clip_start=cand.start, clip_dur=cand.end - cand.start, out_dir=cap_dir
+            in_range, clip_start=cand.start, clip_dur=cand.end - cand.start,
+            out_dir=cap_dir, y_frac=caption_y,
         )
         if not states:
             return
@@ -222,6 +256,9 @@ def _render_layout(
     facecam_corner: str | None,
     out_path: str,
     cache_dir: str,
+    *,
+    facecam_box: tuple[float, float, float, float] | None = None,
+    facecam_h: int = 640,
 ) -> None:
     """Despacha o render conforme o layout resolvido."""
     from medusacut.reframe import compose, layouts
@@ -231,6 +268,7 @@ def _render_layout(
         compose.render_facecam_layout(
             media, candidate, facecam_corner=facecam_corner,
             out_path=out_path, cache_dir=cache_dir, dynamic=True,
+            facecam_box=facecam_box, facecam_h=facecam_h,
         )
     elif layout_name == "gameplay_blur":
         compose.render_blur_fit(media, candidate, out_path=out_path)

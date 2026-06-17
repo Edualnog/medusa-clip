@@ -17,6 +17,7 @@ import streamlit as st
 
 from medusacut import pipeline, preprocess
 from medusacut.ingest import youtube
+from medusacut.reframe.saliency import FACECAM_RECTS
 from medusacut.signals import audio_energy, fusion
 
 st.set_page_config(page_title="Medusa Cut", page_icon="✂️", layout="wide")
@@ -96,6 +97,23 @@ with st.sidebar:
         if layout_value == "facecam_top_gameplay_bottom" and facecam_corner is None:
             st.warning("Escolha o canto do facecam pra usar o layout 'facecam em cima'.")
 
+        caption_y = st.slider(
+            "Altura da legenda (0=topo, 1=base)", 0.50, 0.92, 0.80, 0.02,
+            help="Maior = mais pra baixo, longe da cena.",
+        )
+
+        facecam_box = None
+        facecam_h = 640
+        if layout_value == "facecam_top_gameplay_bottom":
+            preset = FACECAM_RECTS.get(facecam_corner or "tr", (0.62, 0.0, 1.0, 0.42))
+            st.caption("Ajuste fino da caixa do facecam (fracao da tela):")
+            fx = st.slider("Facecam X", 0.0, 0.95, float(preset[0]), 0.01)
+            fy = st.slider("Facecam Y", 0.0, 0.95, float(preset[1]), 0.01)
+            fw = st.slider("Facecam largura", 0.05, 1.0, float(preset[2] - preset[0]), 0.01)
+            fh = st.slider("Facecam altura", 0.05, 1.0, float(preset[3] - preset[1]), 0.01)
+            facecam_box = (fx, fy, min(1.0, fx + fw), min(1.0, fy + fh))
+            facecam_h = st.slider("Altura do painel do rosto (px)", 360, 900, 640, 20)
+
     gerar = st.button("Gerar cortes", type="primary", disabled=not url.strip())
 
 if gerar:
@@ -129,6 +147,9 @@ if gerar:
             layout=layout_value,
             url=clean_url,
             facecam_corner=facecam_corner,
+            facecam_box=facecam_box,
+            facecam_h=facecam_h,
+            caption_y=caption_y,
             audio_path=ss.wav,
             game_context=game_context.strip(),
             score_virality=score_virality,
