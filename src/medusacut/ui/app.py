@@ -84,6 +84,7 @@ with st.sidebar:
         layout_label = st.selectbox("Layout", list(_LAYOUTS), index=0)
         layout_value = _LAYOUTS[layout_label]
         _FACECAM = {
+            "Auto-detectar (rosto)": "auto",
             "Nenhum / varia": None,
             "Topo esquerda": "tl",
             "Topo direita": "tr",
@@ -92,11 +93,13 @@ with st.sidebar:
         }
         facecam_label = st.selectbox(
             "Facecam (webcam do streamer)", list(_FACECAM), index=0,
-            help="Necessario pro layout 'facecam em cima'. Tambem mascara esse canto no reframe dinamico.",
+            help="'Auto-detectar' acha o rosto sozinho. Os cantos sao p/ ajuste manual.",
         )
-        facecam_corner = _FACECAM[facecam_label]
-        if layout_value == "facecam_top_gameplay_bottom" and facecam_corner is None:
-            st.warning("Escolha o canto do facecam pra usar o layout 'facecam em cima'.")
+        choice = _FACECAM[facecam_label]
+        facecam_auto = choice == "auto"
+        facecam_corner = None if facecam_auto else choice
+        if layout_value == "facecam_top_gameplay_bottom" and choice is None:
+            st.warning("Escolha 'Auto-detectar' ou um canto pra usar o layout 'facecam em cima'.")
 
         caption_y = st.slider(
             "Altura da legenda (0=topo, 1=base)", 0.50, 0.92, 0.80, 0.02,
@@ -106,14 +109,17 @@ with st.sidebar:
         facecam_box = None
         facecam_h = 640
         if layout_value == "facecam_top_gameplay_bottom":
-            preset = FACECAM_RECTS.get(facecam_corner or "tr", (0.62, 0.0, 1.0, 0.42))
-            st.caption("Ajuste fino da caixa do facecam (fracao da tela):")
-            fx = st.slider("Facecam X", 0.0, 0.95, float(preset[0]), 0.01)
-            fy = st.slider("Facecam Y", 0.0, 0.95, float(preset[1]), 0.01)
-            fw = st.slider("Facecam largura", 0.05, 1.0, float(preset[2] - preset[0]), 0.01)
-            fh = st.slider("Facecam altura", 0.05, 1.0, float(preset[3] - preset[1]), 0.01)
-            facecam_box = (fx, fy, min(1.0, fx + fw), min(1.0, fy + fh))
             facecam_h = st.slider("Altura do painel do rosto (px)", 360, 900, 640, 20)
+            if facecam_auto:
+                st.caption("Vou detectar o rosto sozinho (cai pro topo-direita se nao achar).")
+            elif facecam_corner is not None:
+                preset = FACECAM_RECTS.get(facecam_corner, (0.62, 0.0, 1.0, 0.42))
+                st.caption("Ajuste fino da caixa do facecam (fracao da tela):")
+                fx = st.slider("Facecam X", 0.0, 0.95, float(preset[0]), 0.01)
+                fy = st.slider("Facecam Y", 0.0, 0.95, float(preset[1]), 0.01)
+                fw = st.slider("Facecam largura", 0.05, 1.0, float(preset[2] - preset[0]), 0.01)
+                fh = st.slider("Facecam altura", 0.05, 1.0, float(preset[3] - preset[1]), 0.01)
+                facecam_box = (fx, fy, min(1.0, fx + fw), min(1.0, fy + fh))
 
     gerar = st.button("Gerar cortes", type="primary", disabled=not url.strip())
 
@@ -150,6 +156,7 @@ if gerar:
             url=clean_url,
             facecam_corner=facecam_corner,
             facecam_box=facecam_box,
+            facecam_auto=facecam_auto,
             facecam_h=facecam_h,
             caption_y=caption_y,
             audio_path=ss.wav,
@@ -164,9 +171,12 @@ if gerar:
         ss.out_dir = out_dir
         try:
             with open(os.path.join(out_dir, "manifest.json"), encoding="utf-8") as fh:
-                ss.cost = json.load(fh).get("cost")
+                manifest = json.load(fh)
+            ss.cost = manifest.get("cost")
+            ss.facecam = manifest.get("facecam")
         except (OSError, ValueError):
             ss.cost = None
+            ss.facecam = None
         if not clips:
             st.warning(
                 "Nenhum momento acima da media de energia. "
@@ -184,6 +194,21 @@ if "track" in ss:
         st.caption(
             f"Video: {media.width}×{media.height} · "
             f"{media.duration:.0f}s · {media.fps:.0f} fps"
+        )
+
+# Resultado da auto-deteccao do facecam.
+fc = ss.get("facecam")
+if fc and fc.get("auto"):
+    if fc.get("detected"):
+        b = fc["box"]
+        st.success(
+            f"🎯 Facecam detectado automaticamente: "
+            f"x {b[0]:.2f}–{b[2]:.2f} · y {b[1]:.2f}–{b[3]:.2f}"
+        )
+    else:
+        st.info(
+            "Facecam nao detectado (sem rosto estavel) — usei o preset topo-direita. "
+            "Escolha um canto manual no Avancado se preferir."
         )
 
 # Custo da geracao (LLM de viralizacao).

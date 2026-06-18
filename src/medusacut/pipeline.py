@@ -34,6 +34,7 @@ def generate_clips(
     game_context: str = "",
     facecam_corner: str | None = None,
     facecam_box: tuple[float, float, float, float] | None = None,
+    facecam_auto: bool = False,
     facecam_h: int = 640,
     caption_y: float = 0.80,
     score_virality: bool = True,
@@ -88,6 +89,7 @@ def generate_clips(
         url=url,
         facecam_corner=facecam_corner,
         facecam_box=facecam_box,
+        facecam_auto=facecam_auto,
         facecam_h=facecam_h,
         caption_y=caption_y,
         audio_path=wav_path,
@@ -108,6 +110,7 @@ def render_candidates(
     url: str,
     facecam_corner: str | None = None,
     facecam_box: tuple[float, float, float, float] | None = None,
+    facecam_auto: bool = False,
     facecam_h: int = 640,
     caption_y: float = 0.80,
     audio_path: str | None = None,
@@ -138,6 +141,27 @@ def render_candidates(
         from medusacut.signals import scene
 
         cuts = scene.detect_cuts(media.path)
+
+    # Auto-deteccao do facecam (frente C): so no layout facecam, se pedido e sem box manual.
+    facecam_info = None
+    if layout_name == "facecam_top_gameplay_bottom" and facecam_auto and facecam_box is None:
+        import sys
+
+        from medusacut.reframe import facecam as facecam_mod
+        from medusacut.reframe.saliency import facecam_rect
+
+        _report(progress, 0.0, "Detectando facecam (rosto)…")
+        detected = facecam_mod.detect_facecam(media.path)
+        if detected:
+            facecam_box = detected
+            facecam_info = {"auto": True, "detected": True, "box": list(detected)}
+        else:
+            facecam_box = facecam_rect("tr")  # fallback seguro
+            facecam_info = {"auto": True, "detected": False, "box": list(facecam_box)}
+            print(
+                "[medusacut] facecam nao detectado (sem rosto estavel); usando preset top-right",
+                file=sys.stderr,
+            )
 
     keep = final_count or len(candidates)
     # 3+6. transcrever (p/ legenda e/ou score) + analise viral 2 etapas -> re-rank.
@@ -176,7 +200,7 @@ def render_candidates(
             )
         )
 
-    _write_manifest(out_dir, url=url, layout=layout_name, clips=clips, usage=usage)
+    _write_manifest(out_dir, url=url, layout=layout_name, clips=clips, usage=usage, facecam=facecam_info)
     _report(render_progress, 1.0, "Pronto")
     return clips
 
@@ -352,7 +376,7 @@ def _band(progress: Progress | None, lo: float, hi: float) -> Progress | None:
     return lambda f, label: progress(lo + (hi - lo) * min(1.0, max(0.0, f)), label)
 
 
-def _write_manifest(out_dir: str, *, url: str, layout: str, clips: list[Clip], usage=None) -> None:
+def _write_manifest(out_dir: str, *, url: str, layout: str, clips: list[Clip], usage=None, facecam=None) -> None:
     cost = None
     if usage is not None:
         from medusacut.llm import DEFAULT_JUDGE_MODEL, DEFAULT_TRIAGE_MODEL
@@ -365,6 +389,7 @@ def _write_manifest(out_dir: str, *, url: str, layout: str, clips: list[Clip], u
         "layout": layout,
         "count": len(clips),
         "cost": cost,
+        "facecam": facecam,
         "clips": [c.to_manifest_entry() for c in clips],
     }
     with open(os.path.join(out_dir, "manifest.json"), "w", encoding="utf-8") as fh:
