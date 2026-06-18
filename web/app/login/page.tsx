@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { MedusaLogo } from "../medusa-logo";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -43,8 +44,12 @@ export default function LoginPage() {
   return (
     <main className="auth">
       <div className="box auth-card">
-        <Link href="/" className="brand center" style={{ display: "block", marginBottom: 18 }}>
-          ✦ MEDUSA CUT
+        <Link
+          href="/"
+          className="brand"
+          style={{ display: "flex", justifyContent: "center", marginBottom: 18 }}
+        >
+          <MedusaLogo size={28} /> MEDUSA CUT
         </Link>
         <h1>{mode === "login" ? "ENTRAR" : "CRIAR CONTA"}</h1>
         <form onSubmit={submit}>

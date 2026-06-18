@@ -2,6 +2,7 @@
 // proximas fases. O design segue a referencia pixel/gamer.
 import { Fragment } from "react";
 import Link from "next/link";
+import { MedusaLogo } from "./medusa-logo";
 
 const STEPS = [
   { icon: "gamepad", title: "1. COLE O LINK", text: "Cole o link do seu vídeo de gameplay" },
@@ -56,7 +57,9 @@ export default function Home() {
   return (
     <>
       <nav className="nav">
-        <span className="brand">✦ MEDUSA CUT</span>
+        <span className="brand">
+          <MedusaLogo size={30} /> MEDUSA CUT
+        </span>
         <Link href="/login" className="nav-link">ENTRAR</Link>
       </nav>
       <main className="wrap">

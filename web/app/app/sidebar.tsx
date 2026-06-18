@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { MedusaLogo } from "../medusa-logo";
 
 const LINKS = [
   { href: "/app", label: "GERAR", icon: "🔗" },
@@ -24,7 +25,9 @@ export default function Sidebar({ email }: { email: string }) {
 
   return (
     <aside className="sidebar">
-      <Link href="/app" className="side-brand">🐍 MEDUSA</Link>
+      <Link href="/app" className="side-brand">
+        <MedusaLogo size={26} /> MEDUSA
+      </Link>
 
       <nav className="side-nav">
         {LINKS.map((l) => {

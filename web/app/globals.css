@@ -403,6 +403,9 @@ h1.hero .ghost {
 }
 
 .brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
   font-family: var(--pixel);
   font-size: 16px;
   letter-spacing: 1px;
@@ -552,6 +555,9 @@ h1.hero .ghost {
 }
 
 .side-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
   font-family: var(--pixel);
   font-size: 15px;
   letter-spacing: 1px;
