@@ -261,7 +261,7 @@ export default function PainelPage() {
 
         <div className="gen2-bar">
           {mode === "upload" ? (
-            <label className="gen2-input gen2-file">
+            <label key="upload" className="gen2-input gen2-file">
               <span aria-hidden><Icon name="film" size={20} /></span>
               <input
                 type="file"
@@ -274,9 +274,10 @@ export default function PainelPage() {
               </span>
             </label>
           ) : (
-            <label className="gen2-input">
+            <label key="link" className="gen2-input">
               <span aria-hidden><Icon name="link" size={20} /></span>
               <input
+                type="text"
                 placeholder="Cole o link do Google Drive, Dropbox ou .mp4 direto…"
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
