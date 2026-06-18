@@ -1219,3 +1219,64 @@ h1.hero .ghost {
 .clip-card:hover {
   border-color: #ffffffaa;
 }
+
+/* ---------- opcoes de estilo (tela de gerar) ---------- */
+.opts-box {
+  padding: 16px 18px;
+  margin-top: 14px;
+}
+
+.opts-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  align-items: flex-end;
+}
+
+.opt {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.opt > span {
+  font-family: var(--pixel);
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: var(--muted);
+}
+
+.opt select,
+.opt input[type="range"] {
+  font-family: var(--body);
+  font-size: 18px;
+  background: #0a0a0d;
+  color: var(--fg);
+  border: 3px solid var(--line);
+  padding: 8px 10px;
+  min-width: 180px;
+}
+
+.opt input[type="range"] {
+  padding: 0;
+  accent-color: #ffd11a;
+  min-width: 160px;
+}
+
+.opt-check {
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+}
+
+.opt-check input {
+  width: 20px;
+  height: 20px;
+  accent-color: #ffd11a;
+}
+
+.opt-check > span {
+  font-family: var(--pixel);
+  font-size: 11px;
+  color: var(--fg);
+}

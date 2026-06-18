@@ -89,9 +89,12 @@ def _process(sb, job) -> None:
             out_dir=workdir,
             max_clips=int(opts.get("max_clips", 6)),
             layout=opts.get("layout", "facecam_top_gameplay_bottom"),
+            facecam_corner=opts.get("facecam_corner"),
             facecam_auto=bool(opts.get("facecam_auto", True)),
             score_virality=bool(opts.get("score_virality", True)),
             captions=bool(opts.get("captions", True)),
+            min_len=opts.get("min_len"),
+            max_len=opts.get("max_len"),
             progress=progress,
         )
 

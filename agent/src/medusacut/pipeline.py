@@ -39,6 +39,8 @@ def generate_clips(
     caption_y: float = 0.80,
     score_virality: bool = True,
     captions: bool = True,
+    min_len: float | None = None,
+    max_len: float | None = None,
     progress: Progress | None = None,
 ) -> list[Clip]:
     """
@@ -76,8 +78,10 @@ def generate_clips(
     _report(progress, 0.65, "Selecionando os melhores momentos…")
     # Sobre-seleciona quando vai pontuar: a analise viral escolhe os melhores.
     pool = max_clips * OVERSELECT_FACTOR if score_virality else max_clips
+    lo = min_len if min_len is not None else fusion.MIN_LEN
+    hi = max_len if max_len is not None else fusion.MAX_LEN
     candidates = fusion.select_candidates(
-        [audio_track], max_clips=pool, duration=media.duration
+        [audio_track], max_clips=pool, duration=media.duration, min_len=lo, max_len=hi
     )
 
     # 6-9. analise viral (2 etapas) + reframe + render + manifest (0.65 -> 1.00)
@@ -97,6 +101,7 @@ def generate_clips(
         score_virality=score_virality,
         captions=captions,
         final_count=max_clips,
+        min_len=lo,
         progress=_band(progress, 0.65, 1.0),
     )
 
@@ -118,6 +123,7 @@ def render_candidates(
     score_virality: bool = False,
     captions: bool = False,
     final_count: int | None = None,
+    min_len: float | None = None,
     progress: Progress | None = None,
 ) -> list[Clip]:
     """Score de viralizacao + reframe + render + LEGENDA + manifest.
@@ -169,7 +175,7 @@ def render_candidates(
         prepared, usage = _prepare_candidates(
             media, candidates, audio_path, game_context,
             score_virality=score_virality, final_count=keep, cache_dir=cache_dir,
-            progress=_band(progress, 0.0, 0.5),
+            min_len=min_len, progress=_band(progress, 0.0, 0.5),
         )
         render_progress = _band(progress, 0.5, 1.0)
     else:
@@ -213,7 +219,8 @@ KEYFRAMES = 4
 
 
 def _prepare_candidates(
-    media, candidates, audio_path, game_context, *, score_virality, final_count, cache_dir, progress
+    media, candidates, audio_path, game_context, *, score_virality, final_count, cache_dir,
+    min_len=None, progress=None
 ):
     """Transcreve + (se pedido) pontua viralizacao em DUAS etapas e ranqueia.
 
@@ -262,6 +269,7 @@ def _prepare_candidates(
     from medusacut import frames
     from medusacut.signals.fusion import MIN_LEN
 
+    floor = min_len if min_len is not None else MIN_LEN
     judged = []  # (cand, HookResult|None, words)
     m = len(shortlist)
     for i, (cand, words, text, _ts) in enumerate(shortlist, start=1):
@@ -275,7 +283,7 @@ def _prepare_candidates(
             if hook.usage is not None:
                 usage_total = hook.usage if usage_total is None else usage_total + hook.usage
             if hook.refined_start is not None and hook.refined_end is not None:
-                rs, re_ = _floor_len(hook.refined_start, hook.refined_end, cand.start, cand.end, MIN_LEN)
+                rs, re_ = _floor_len(hook.refined_start, hook.refined_end, cand.start, cand.end, floor)
                 cand = Candidate(rs, re_, cand.score)
         except Exception as exc:
             print(f"[medusacut] juiz falhou no corte {i}: {exc}", file=sys.stderr)

@@ -15,9 +15,10 @@ from __future__ import annotations
 
 from medusacut.types import Candidate, ScoreTrack
 
-# Limites e formato do corte (segundos). Pedido do dono: cortes longos 60s–3min.
-MIN_LEN = 60.0
-MAX_LEN = 180.0
+# Limites/duracao do corte (segundos). Defaults dao VARIEDADE; a UI manda min/max
+# por geracao (preset). Antes 60/180 com piso 60 -> tudo saia exatamente 60s.
+MIN_LEN = 15.0
+MAX_LEN = 90.0
 # Fracao do pico ate onde a janela cresce ("ainda tem acao aqui?").
 SUSTAIN_FRAC = 0.15
 # Tolera vales curtos abaixo do limiar sem encerrar a janela (segundos).

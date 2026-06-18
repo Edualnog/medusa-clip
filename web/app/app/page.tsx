@@ -15,6 +15,25 @@ type Job = {
 
 type Stats = { clipsTotal: number; jobsDone: number; costUsd: number; totalTokens: number };
 
+const LAYOUTS: Record<string, string> = {
+  facecam_top_gameplay_bottom: "Facecam em cima + gameplay",
+  dynamic_gameplay: "Gameplay (segue a ação)",
+  gameplay_blur: "Tela cheia + fundo desfocado",
+  gameplay_only: "Crop central",
+};
+const DUR: Record<string, [number, number, string]> = {
+  auto: [15, 90, "Auto (15–90s) — variado"],
+  curto: [10, 40, "Curtos (10–40s)"],
+  longo: [60, 180, "Longos (60–180s)"],
+};
+const FACECAM: Record<string, string> = {
+  auto: "Auto-detectar (rosto)",
+  tr: "Topo direita",
+  tl: "Topo esquerda",
+  br: "Baixo direita",
+  bl: "Baixo esquerda",
+};
+
 export default function PainelPage() {
   const [url, setUrl] = useState("");
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -23,6 +42,12 @@ export default function PainelPage() {
   const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
   const [creating, setCreating] = useState(false);
   const hadActive = useRef(false);
+  // opcoes de estilo do corte
+  const [layout, setLayout] = useState("facecam_top_gameplay_bottom");
+  const [durPreset, setDurPreset] = useState("auto");
+  const [maxClips, setMaxClips] = useState(6);
+  const [captions, setCaptions] = useState(true);
+  const [facecamCorner, setFacecamCorner] = useState("auto");
 
   const loadClips = useCallback(async () => {
     const r = await fetch("/api/clips");
@@ -63,10 +88,21 @@ export default function PainelPage() {
     e.preventDefault();
     setCreating(true);
     setMsg(null);
+    const [min_len, max_len] = DUR[durPreset];
+    const options = {
+      layout,
+      captions,
+      max_clips: maxClips,
+      min_len,
+      max_len,
+      facecam_auto: facecamCorner === "auto",
+      facecam_corner: facecamCorner === "auto" ? null : facecamCorner,
+      score_virality: true,
+    };
     const r = await fetch("/api/jobs", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url }),
+      body: JSON.stringify({ url, options }),
     });
     const data = await r.json().catch(() => ({}));
     if (r.ok) {
@@ -109,6 +145,46 @@ export default function PainelPage() {
         </button>
       </form>
       <p className="gen-hint">ⓘ Suporta YouTube, TikTok e muito mais — processa na nuvem com a sua chave.</p>
+
+      <div className="box opts-box">
+        <div className="opts-row">
+          <label className="opt">
+            <span>ESTILO / LAYOUT</span>
+            <select value={layout} onChange={(e) => setLayout(e.target.value)}>
+              {Object.entries(LAYOUTS).map(([v, l]) => (
+                <option key={v} value={v}>{l}</option>
+              ))}
+            </select>
+          </label>
+          <label className="opt">
+            <span>DURAÇÃO</span>
+            <select value={durPreset} onChange={(e) => setDurPreset(e.target.value)}>
+              {Object.entries(DUR).map(([v, d]) => (
+                <option key={v} value={v}>{d[2]}</option>
+              ))}
+            </select>
+          </label>
+          {layout === "facecam_top_gameplay_bottom" && (
+            <label className="opt">
+              <span>FACECAM</span>
+              <select value={facecamCorner} onChange={(e) => setFacecamCorner(e.target.value)}>
+                {Object.entries(FACECAM).map(([v, l]) => (
+                  <option key={v} value={v}>{l}</option>
+                ))}
+              </select>
+            </label>
+          )}
+          <label className="opt">
+            <span>Nº DE CORTES: {maxClips}</span>
+            <input type="range" min={1} max={10} value={maxClips} onChange={(e) => setMaxClips(Number(e.target.value))} />
+          </label>
+          <label className="opt opt-check">
+            <input type="checkbox" checked={captions} onChange={(e) => setCaptions(e.target.checked)} />
+            <span>Legenda karaokê</span>
+          </label>
+        </div>
+      </div>
+
       {msg && <p className={msg.kind === "ok" ? "dash-note" : "msg"}>{msg.text}</p>}
 
       {active && (
