@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8" />
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:;" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; media-src 'self' zclip:;" />
 <title>Zorothax</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -11,24 +11,34 @@
   :root {
     --bg:#060608; --fg:#fff; --muted:#9aa0a6; --dim:#6b7177; --accent:#ffd11a;
     --soft:#ffffff22; --soft2:#ffffff3d;
-    --pixel:"Press Start 2P", monospace; --body:"VT323", "Courier New", monospace;
+    --pixel:"Press Start 2P", monospace; --body:"VT323","Courier New",monospace;
   }
   * { box-sizing:border-box; }
+  html, body { height:100%; }
   body {
-    margin:0; color:var(--fg); font-family:var(--body); font-size:20px;
-    background-color:var(--bg);
+    margin:0; color:var(--fg); font-family:var(--body); font-size:20px; background-color:var(--bg);
     background-image:
-      radial-gradient(1px 1px at 20px 30px, #ffffff22 50%, transparent 50%),
-      radial-gradient(1px 1px at 120px 90px, #ffffff1a 50%, transparent 50%),
-      radial-gradient(1px 1px at 200px 160px, #ffffff22 50%, transparent 50%),
-      radial-gradient(2px 2px at 300px 60px, #ffffff14 50%, transparent 50%),
-      radial-gradient(1px 1px at 80px 220px, #ffffff1c 50%, transparent 50%);
+      radial-gradient(1px 1px at 20px 30px,#ffffff22 50%,transparent 50%),
+      radial-gradient(1px 1px at 120px 90px,#ffffff1a 50%,transparent 50%),
+      radial-gradient(1px 1px at 200px 160px,#ffffff22 50%,transparent 50%),
+      radial-gradient(2px 2px at 300px 60px,#ffffff14 50%,transparent 50%),
+      radial-gradient(1px 1px at 80px 220px,#ffffff1c 50%,transparent 50%);
     background-repeat:repeat; background-size:360px 280px; image-rendering:pixelated;
   }
   ::selection { background:#fff; color:#000; }
-  .wrap { max-width:840px; margin:0 auto; padding:30px 26px 70px; }
-  h1 { font-family:var(--pixel); font-size:20px; letter-spacing:2px; margin:0 0 12px; text-shadow:3px 3px 0 #000; }
-  .sub { color:var(--muted); font-size:19px; margin:0 0 24px; }
+
+  .shell { display:grid; grid-template-columns:108px 1fr; height:100vh; }
+  .side { border-right:2px solid var(--soft); background:#08080b; display:flex; flex-direction:column; align-items:center; gap:14px; padding:18px 8px; }
+  .logo { width:46px; height:46px; image-rendering:auto; }
+  .nav { display:flex; flex-direction:column; align-items:center; gap:5px; width:100%; padding:9px 2px; border:2px solid transparent; background:none; color:var(--dim); cursor:pointer; font-family:var(--pixel); font-size:7px; letter-spacing:.5px; line-height:1.4; }
+  .nav svg { width:22px; height:22px; }
+  .nav:hover { color:#fff; border-color:#ffffff22; }
+  .nav.active { color:#000; background:var(--accent); border-color:var(--accent); }
+
+  .main { overflow:auto; padding:34px 48px 70px; }
+  .inner { max-width:920px; margin:0 auto; }
+  h2 { font-family:var(--pixel); font-size:15px; letter-spacing:2px; margin:0 0 4px; }
+  .sub { color:var(--muted); font-size:19px; margin:0 0 22px; }
 
   .box {
     position:relative; border:2px solid var(--soft); background:#0a0a0d; padding:20px; margin-bottom:16px;
@@ -46,7 +56,6 @@
   .src .name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:22px; }
   .src .name.ph { color:var(--dim); }
   .bar:focus-within .src { border-color:var(--accent); }
-
   .gen { font-family:var(--pixel); font-size:14px; letter-spacing:1px; padding:0 28px; background:var(--accent); color:#000; border:2px solid var(--accent); cursor:pointer; white-space:nowrap; }
   .gen:hover:not(:disabled) { background:#000; color:var(--accent); }
   .gen:disabled { background:#14151a; color:var(--dim); border-color:var(--soft); cursor:default; }
@@ -60,12 +69,12 @@
   .check { flex-direction:row; align-items:center; gap:10px; }
   .check input { width:20px; height:20px; accent-color:var(--accent); }
   .check span { font-family:var(--pixel); font-size:11px; }
-
   .hint { font-family:var(--body); font-size:18px; color:var(--dim); margin:14px 0 0; }
 
-  label.key span { font-family:var(--pixel); font-size:10px; letter-spacing:1px; color:var(--muted); }
-  label.key input { width:100%; margin-top:10px; background:#0a0a0d; color:var(--fg); border:2px solid var(--soft2); padding:12px; font-family:var(--body); font-size:20px; transition:border-color .1s ease; }
-  label.key input:focus { outline:none; border-color:var(--accent); }
+  .key-card label span { font-family:var(--pixel); font-size:10px; letter-spacing:1px; color:var(--muted); }
+  .key-card input { width:100%; margin-top:10px; background:#0a0a0d; color:var(--fg); border:2px solid var(--soft2); padding:12px; font-family:var(--body); font-size:20px; transition:border-color .1s ease; }
+  .key-card input:focus { outline:none; border-color:var(--accent); }
+  .saved { font-family:var(--body); font-size:17px; color:var(--accent); margin-top:10px; min-height:20px; }
 
   .prog { display:none; }
   .prog.show { display:block; }
@@ -75,79 +84,125 @@
   .stage { color:var(--muted); font-size:19px; margin-top:10px; }
   .msg { font-family:var(--body); font-size:18px; padding:12px; border:2px solid var(--soft2); margin-top:10px; }
   .msg.err { border-color:#ff6b6b; color:#ff8a8a; }
-  .clip { border:2px solid var(--soft); padding:12px; margin-top:10px; }
-  .clip .hook { font-family:var(--pixel); font-size:11px; line-height:1.6; }
-  .clip .meta { color:var(--dim); font-size:18px; margin-top:6px; }
-  .row { display:flex; gap:10px; margin-top:14px; }
-  .btn2 { font-family:var(--pixel); font-size:11px; letter-spacing:1px; padding:12px 16px; background:#0a0a0d; color:var(--fg); border:2px solid var(--soft2); cursor:pointer; }
+  .msg.warn { border-color:var(--accent); color:var(--accent); }
+
+  .libhead { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:16px; }
+  .clip { padding:10px; }
+  .clip-wrap { position:relative; width:100%; aspect-ratio:9/16; background:#000; border:2px solid var(--soft2); overflow:hidden; }
+  .clip-wrap video { width:100%; height:100%; object-fit:cover; display:block; }
+  .clip-badges { position:absolute; top:0; left:0; right:0; display:flex; gap:6px; padding:8px; pointer-events:none; }
+  .clip-viral { display:inline-flex; align-items:center; gap:4px; font-family:var(--pixel); font-size:10px; color:#000; background:#fff; padding:3px 7px; }
+  .clip-dur { margin-left:auto; font-family:var(--pixel); font-size:10px; color:#fff; background:#000000b0; border:1px solid #ffffff44; padding:3px 7px; }
+  .clip-hook { font-family:var(--pixel); font-size:10px; line-height:1.6; margin-top:10px; min-height:30px; }
+  .clip-hook.dim { color:var(--dim); }
+  .empty { border:2px dashed var(--soft2); padding:40px; text-align:center; color:var(--muted); font-size:19px; }
+  .btn2 { font-family:var(--pixel); font-size:11px; letter-spacing:1px; padding:11px 16px; background:#0a0a0d; color:var(--fg); border:2px solid var(--soft2); cursor:pointer; }
   .btn2:hover { background:var(--accent); color:#000; border-color:var(--accent); }
+  .row { display:flex; gap:10px; margin-top:14px; }
   .hidden { display:none; }
 </style>
 </head>
 <body>
-<div class="wrap">
-  <h1>ZOROTHAX</h1>
-  <p class="sub">Cortes virais de gameplay — rodando no seu PC, com a sua chave.</p>
+<div class="shell">
+  <aside class="side">
+    <img class="logo" src="logo.png" alt="Zorothax" />
+    <button class="nav active" data-view="inicio">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11l8-7 8 7"/><path d="M6 10v9h12v-9"/></svg>
+      INÍCIO
+    </button>
+    <button class="nav" data-view="biblioteca">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="8" height="7"/><rect x="13" y="4" width="8" height="7"/><rect x="3" y="14" width="8" height="6"/><rect x="13" y="14" width="8" height="6"/></svg>
+      BIBLIOTECA
+    </button>
+    <button class="nav" data-view="apis">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="4"/><path d="M11 11l8 8M16 16l2-2M18 18l2-2"/></svg>
+      CHAVES API
+    </button>
+  </aside>
 
-  <div class="box">
-    <div class="tabs">
-      <button class="tab active" data-mode="file">ESCOLHER ARQUIVO</button>
-      <button class="tab" data-mode="link">COLAR LINK</button>
+  <main class="main">
+    <div class="inner">
+
+      <section id="view-inicio">
+        <h2>INICIO</h2>
+        <p class="sub">Cortes virais — rodando no seu PC, com a sua chave.</p>
+        <div class="box">
+          <div class="tabs">
+            <button class="tab active" data-mode="file">ESCOLHER ARQUIVO</button>
+            <button class="tab" data-mode="link">COLAR LINK</button>
+          </div>
+          <div class="bar">
+            <div class="src" id="srcFile"><span class="name ph" id="fileName">Escolha o vídeo do seu gameplay…</span></div>
+            <div class="src hidden" id="srcLink"><input id="linkInput" type="text" placeholder="Cole o link do YouTube, Drive ou .mp4…" /></div>
+            <button class="gen" id="gen" disabled>✦ GERAR</button>
+          </div>
+          <div class="opts">
+            <label class="opt"><span>LAYOUT</span>
+              <select id="layout">
+                <option value="facecam_top_gameplay_bottom">Facecam em cima + gameplay</option>
+                <option value="dynamic_gameplay">Gameplay (segue a ação)</option>
+                <option value="gameplay_blur">Tela cheia + fundo desfocado</option>
+              </select>
+            </label>
+            <label class="opt"><span>DURAÇÃO</span>
+              <select id="dur">
+                <option value="15,90">Auto (15–90s)</option>
+                <option value="10,40">Curtos (10–40s)</option>
+                <option value="60,180">Longos (60–180s)</option>
+              </select>
+            </label>
+            <label class="opt"><span>FACECAM</span>
+              <select id="facecam">
+                <option value="auto">Auto (rosto)</option>
+                <option value="tr">Topo direita</option>
+                <option value="tl">Topo esquerda</option>
+                <option value="br">Baixo direita</option>
+                <option value="bl">Baixo esquerda</option>
+              </select>
+            </label>
+            <label class="opt"><span>Nº DE CORTES: <b id="clipsN">3</b></span>
+              <input id="clips" type="range" min="1" max="10" value="3" />
+            </label>
+            <label class="opt check"><input id="captions" type="checkbox" checked /><span>Legenda karaokê</span></label>
+          </div>
+          <p class="hint">ⓘ Processa local (rápido). YouTube funciona aqui — é o seu IP residencial.</p>
+        </div>
+
+        <div class="box prog" id="prog">
+          <div class="progtop"><span id="pstate">PROCESSANDO</span><span id="ppct">0%</span></div>
+          <div class="track"><div class="fill" id="pfill"></div></div>
+          <div class="stage" id="pstage">…</div>
+          <div id="result"></div>
+        </div>
+      </section>
+
+      <section id="view-biblioteca" class="hidden">
+        <div class="libhead">
+          <div><h2>BIBLIOTECA</h2><p class="sub" style="margin:0">Seus cortes — salvos no seu PC.</p></div>
+          <div class="row" style="margin:0">
+            <button class="btn2" id="refresh">ATUALIZAR</button>
+            <button class="btn2" id="openLib">ABRIR PASTA</button>
+          </div>
+        </div>
+        <div id="lib"></div>
+      </section>
+
+      <section id="view-apis" class="hidden">
+        <h2>CHAVES API</h2>
+        <p class="sub">Sua chave da OpenRouter — fica só no seu PC, nunca sai daqui.</p>
+        <div class="box key-card">
+          <label><span>CHAVE DA OPENROUTER</span>
+            <input id="key" type="password" placeholder="sk-or-..." />
+          </label>
+          <div class="saved" id="keySaved"></div>
+          <div class="row"><button class="btn2" id="saveKey">SALVAR CHAVE</button></div>
+        </div>
+        <p class="hint">ⓘ Você paga só a IA, direto na sua chave — sem markup nosso.</p>
+      </section>
+
     </div>
-    <div class="bar">
-      <div class="src" id="srcFile">
-        <span class="name ph" id="fileName">Escolha o vídeo do seu gameplay…</span>
-      </div>
-      <div class="src hidden" id="srcLink">
-        <input id="linkInput" type="text" placeholder="Cole o link do YouTube, Drive ou .mp4…" />
-      </div>
-      <button class="gen" id="gen" disabled>✦ GERAR</button>
-    </div>
-
-    <div class="opts">
-      <label class="opt"><span>LAYOUT</span>
-        <select id="layout">
-          <option value="facecam_top_gameplay_bottom">Facecam em cima + gameplay</option>
-          <option value="dynamic_gameplay">Gameplay (segue a ação)</option>
-          <option value="gameplay_blur">Tela cheia + fundo desfocado</option>
-        </select>
-      </label>
-      <label class="opt"><span>DURAÇÃO</span>
-        <select id="dur">
-          <option value="15,90">Auto (15–90s)</option>
-          <option value="10,40">Curtos (10–40s)</option>
-          <option value="60,180">Longos (60–180s)</option>
-        </select>
-      </label>
-      <label class="opt"><span>FACECAM</span>
-        <select id="facecam">
-          <option value="auto">Auto (rosto)</option>
-          <option value="tr">Topo direita</option>
-          <option value="tl">Topo esquerda</option>
-          <option value="br">Baixo direita</option>
-          <option value="bl">Baixo esquerda</option>
-        </select>
-      </label>
-      <label class="opt"><span>Nº DE CORTES: <b id="clipsN">3</b></span>
-        <input id="clips" type="range" min="1" max="10" value="3" />
-      </label>
-      <label class="opt check"><input id="captions" type="checkbox" checked /><span>Legenda karaokê</span></label>
-    </div>
-    <p class="hint">ⓘ Processa local (rápido). YouTube funciona aqui — é o seu IP residencial.</p>
-  </div>
-
-  <div class="box">
-    <label class="key"><span>CHAVE DA OPENROUTER (fica só no seu PC)</span>
-      <input id="key" type="password" placeholder="sk-or-..." />
-    </label>
-  </div>
-
-  <div class="box prog" id="prog">
-    <div class="progtop"><span id="pstate">PROCESSANDO</span><span id="ppct">0%</span></div>
-    <div class="track"><div class="fill" id="pfill"></div></div>
-    <div class="stage" id="pstage">…</div>
-    <div id="result"></div>
-  </div>
+  </main>
 </div>
 <script src="app.js"></script>
 </body>

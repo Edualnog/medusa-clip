@@ -6,8 +6,10 @@ contextBridge.exposeInMainWorld("api", {
   getKey: () => ipcRenderer.invoke("get-key"),
   setKey: (k) => ipcRenderer.invoke("set-key", k),
   openFolder: (p) => ipcRenderer.invoke("open-folder", p),
+  listClips: () => ipcRenderer.invoke("list-clips"),
   generate: (opts) => ipcRenderer.send("generate", opts),
   onProgress: (cb) => ipcRenderer.on("job-progress", (_e, m) => cb(m)),
   onDone: (cb) => ipcRenderer.on("job-done", (_e, m) => cb(m)),
+  onWarning: (cb) => ipcRenderer.on("job-warning", (_e, m) => cb(m)),
   onError: (cb) => ipcRenderer.on("job-error", (_e, m) => cb(m)),
 });

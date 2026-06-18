@@ -1,11 +1,12 @@
-// Processo principal do Electron: cria a janela, guarda a chave, dispara o BINARIO
-// do motor (medusacut-engine) e repassa o progresso (JSON por linha) pra UI.
+// Processo principal do Electron: janela, chave, dispara o BINARIO do motor
+// (medusacut-engine), repassa o progresso (JSON), e serve a biblioteca local.
 
-const { app, BrowserWindow, ipcMain, dialog, shell } = require("electron");
+const { app, BrowserWindow, ipcMain, dialog, shell, protocol, net } = require("electron");
 const path = require("path");
 const fs = require("fs");
 const { spawn } = require("child_process");
 const readline = require("readline");
+const { pathToFileURL } = require("url");
 
 let win = null;
 let child = null;
@@ -22,24 +23,29 @@ function saveConfig(c) {
   fs.writeFileSync(configPath(), JSON.stringify(c));
 }
 
-// Caminho do binario do motor: env em dev, recurso embutido no app empacotado.
 function enginePath() {
   if (process.env.ENGINE_BIN) return process.env.ENGINE_BIN;
   if (app.isPackaged) return path.join(process.resourcesPath, "engine", "medusacut-engine");
   return "/tmp/medusa_e2e/dist/medusacut-engine/medusacut-engine";
 }
 
-function outputDir() {
+function libraryRoot() {
   const dir = path.join(app.getPath("downloads"), "Zorothax");
   fs.mkdirSync(dir, { recursive: true });
   return dir;
 }
 
+// esquema privilegiado pra tocar os clipes locais no <video> (CSP-safe)
+protocol.registerSchemesAsPrivileged([
+  { scheme: "zclip", privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true } },
+]);
+
 function createWindow() {
   win = new BrowserWindow({
-    width: 1000,
-    height: 800,
-    backgroundColor: "#0a0a0d",
+    width: 1080,
+    height: 820,
+    minWidth: 900,
+    backgroundColor: "#060608",
     title: "Zorothax",
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
@@ -50,7 +56,14 @@ function createWindow() {
   win.loadFile(path.join(__dirname, "renderer", "index.html"));
 }
 
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+  // zclip://abs/<caminho-do-arquivo> -> serve o arquivo de video local
+  protocol.handle("zclip", (request) => {
+    const p = decodeURIComponent(request.url.replace(/^zclip:\/\//, ""));
+    return net.fetch(pathToFileURL(p).toString());
+  });
+  createWindow();
+});
 app.on("window-all-closed", () => app.quit());
 app.on("activate", () => {
   if (BrowserWindow.getAllWindows().length === 0) createWindow();
@@ -70,11 +83,60 @@ ipcMain.handle("set-key", (_e, k) => {
   saveConfig(c);
   return true;
 });
-ipcMain.handle("open-folder", (_e, p) => shell.openPath(p || outputDir()));
+ipcMain.handle("open-folder", (_e, p) => shell.openPath(p || libraryRoot()));
+
+// Lista os cortes ja gerados (varre as subpastas por run + le os manifests).
+ipcMain.handle("list-clips", () => {
+  const root = libraryRoot();
+  const out = [];
+  let runs;
+  try {
+    runs = fs.readdirSync(root, { withFileTypes: true }).filter((d) => d.isDirectory());
+  } catch {
+    return [];
+  }
+  // mais novo primeiro (subpasta = timestamp)
+  runs.sort((a, b) => b.name.localeCompare(a.name));
+  for (const r of runs) {
+    const dir = path.join(root, r.name);
+    let manifest = {};
+    try {
+      manifest = JSON.parse(fs.readFileSync(path.join(dir, "manifest.json"), "utf8"));
+    } catch {
+      /* sem manifest */
+    }
+    const byFile = {};
+    (manifest.clips || []).forEach((c) => (byFile[c.file] = c));
+    let files;
+    try {
+      files = fs.readdirSync(dir).filter((f) => f.endsWith(".mp4") && !f.endsWith(".cap.mp4"));
+    } catch {
+      files = [];
+    }
+    files.sort();
+    for (const f of files) {
+      const meta = byFile[f] || {};
+      out.push({
+        file: f,
+        url: "zclip://" + encodeURIComponent(path.join(dir, f)),
+        path: path.join(dir, f),
+        run: r.name,
+        hook: meta.hook || "",
+        description: meta.description || "",
+        virality_score: meta.virality_score ?? null,
+        duration_s: meta.start != null && meta.end != null ? meta.end - meta.start : null,
+      });
+    }
+  }
+  return out;
+});
 
 ipcMain.on("generate", (_e, opts) => {
-  if (child) return; // um job por vez
-  const out = outputDir();
+  if (child) return;
+  const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+  const out = path.join(libraryRoot(), stamp);
+  fs.mkdirSync(out, { recursive: true });
+
   const args = [
     opts.source,
     "--out", out,
@@ -102,9 +164,10 @@ ipcMain.on("generate", (_e, opts) => {
       const msg = JSON.parse(line);
       if (msg.type === "progress") win.webContents.send("job-progress", msg);
       else if (msg.type === "done") win.webContents.send("job-done", { ...msg, out });
+      else if (msg.type === "warning") win.webContents.send("job-warning", msg);
       else if (msg.type === "error") win.webContents.send("job-error", msg);
     } catch {
-      /* linha nao-JSON (log do ffmpeg/whisper) — ignora */
+      /* log do ffmpeg/whisper — ignora */
     }
   });
 

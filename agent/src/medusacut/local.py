@@ -66,6 +66,14 @@ def run(argv: list[str] | None = None) -> int:
         _emit({"type": "error", "message": str(exc)})
         return 1
 
+    # Avisa se a IA nao rodou (gancho/score vazios) — provavel chave invalida/sem
+    # credito. Sem isso o usuario nao entende por que os cortes vieram "secos".
+    if clips and all(not (c.hook or "").strip() for c in clips):
+        _emit({
+            "type": "warning",
+            "message": "A IA não gerou ganchos/score — confira sua chave da OpenRouter (validade/créditos). Os cortes saíram, mas sem título.",
+        })
+
     _emit({
         "type": "done",
         "out": os.path.abspath(a.out),
