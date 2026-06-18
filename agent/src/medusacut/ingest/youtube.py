@@ -60,6 +60,11 @@ def download(
     pot_base = os.environ.get("YTDLP_POT_BASEURL")
     if pot_base:
         ydl_opts["extractor_args"] = {"youtubepot-bgutilhttp": {"base_url": [pot_base]}}
+    # Proxy residencial — SO pra YouTube (Drive/Dropbox/.mp4 baixam direto, sem gastar
+    # banda do proxy). Com IP residencial o YouTube serve normal, sem bot-check.
+    proxy = os.environ.get("YTDLP_PROXY")
+    if proxy and _is_youtube(url):
+        ydl_opts["proxy"] = proxy
     if on_progress is not None:
         ydl_opts["progress_hooks"] = [_make_progress_hook(on_progress)]
 
@@ -78,6 +83,11 @@ def download(
 
     fps, width, height, duration = _probe(path, info)
     return Media(path=path, fps=fps, width=width, height=height, duration=duration)
+
+
+def _is_youtube(url: str) -> bool:
+    u = url.lower()
+    return "youtube.com" in u or "youtu.be" in u
 
 
 def probe_media(path: str) -> Media:
