@@ -1,6 +1,7 @@
 // Landing 8-bit do Medusa Cut. Estatica por enquanto — auth + app vem nas
 // proximas fases. O design segue a referencia pixel/gamer.
 import { Fragment } from "react";
+import Link from "next/link";
 
 const STEPS = [
   { icon: "gamepad", title: "1. COLE O LINK", text: "Cole o link do seu vídeo de gameplay" },
@@ -53,7 +54,12 @@ function Icon({ name }: { name: string }) {
 
 export default function Home() {
   return (
-    <main className="wrap">
+    <>
+      <nav className="nav">
+        <span className="brand">✦ MEDUSA CUT</span>
+        <Link href="/login" className="nav-link">ENTRAR</Link>
+      </nav>
+      <main className="wrap">
       {/* badge */}
       <div className="row-center">
         <div className="badge">✦ NOVO: IA AINDA MAIS PRECISA ✦</div>
@@ -76,9 +82,9 @@ export default function Home() {
           <span aria-hidden>🔗</span>
           <input placeholder="Cole o link do seu vídeo de gameplay aqui..." />
         </label>
-        <a className="btn" href="#como-funciona">
+        <Link className="btn" href="/app">
           GERAR CLIPS →
-        </a>
+        </Link>
       </div>
       <p className="supports">
         Suporta <b>▶ YouTube</b> · <b>♪ TikTok</b> · e muito mais
@@ -147,6 +153,7 @@ export default function Home() {
       </div>
 
       <p className="foot">Medusa Cut · clips de games nível Opus Clip</p>
-    </main>
+      </main>
+    </>
   );
 }
