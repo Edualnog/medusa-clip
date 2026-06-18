@@ -40,6 +40,9 @@ servidor). Rode `cd web && npm run dev`.
 1. Conecte o repositório na vercel.com, root = `web/`.
 2. Em **Settings → Environment Variables**, cole as MESMAS 4 variáveis.
 3. Deploy. (HTTPS e CDN automáticos.)
+4. **Domínio `medusacut.com.br`**: Vercel → Settings → Domains → adicionar o
+   domínio; a Vercel te dá os registros DNS (um `A`/`CNAME`) pra colar no painel do
+   teu registrador. HTTPS sai automático.
 
 ## 3) VPS — o worker  ⏳ (Fase 3)
 
