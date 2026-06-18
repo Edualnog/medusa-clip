@@ -29,6 +29,17 @@ def test_consolidate_scattered_hits_returns_none():
     assert consolidate(hits, samples=20, min_hits_frac=0.25) is None
 
 
+def test_consolidate_facecam_dominates_gameplay_faces():
+    # facecam persistente no topo-direita + rostos esporadicos no gameplay (baixo).
+    # O cluster do facecam domina -> retorna a caixa dele, ignora os do jogo.
+    hits = [(0.8, 0.12, 0.10, 0.14)] * 10 + [(0.4, 0.82, 0.06, 0.08)] * 3
+    box = consolidate(hits, samples=30, min_hits_frac=0.25)
+    assert box is not None
+    x0, y0, x1, y1 = box
+    assert (x0 + x1) / 2 == approx(0.8)
+    assert (y0 + y1) / 2 == approx(0.12)  # pegou o facecam, nao a media com o gameplay
+
+
 def test_consolidate_clamps_to_frame():
     hits = [(0.95, 0.95, 0.3, 0.3)] * 10  # perto da borda, box estouraria
     box = consolidate(hits, samples=20, min_hits_frac=0.25, pad=1.5)

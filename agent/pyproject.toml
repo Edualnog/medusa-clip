@@ -9,6 +9,7 @@ dependencies = [
     "faster-whisper==1.2.1",  # transcricao com timestamps por palavra (M2)
     "ffmpeg-python==0.2.0",   # preprocess + render
     "scenedetect==0.7",       # troca de cena (sinal de gameplay) (M4)
+    "opencv-python-headless==4.11.0.86",  # reframe (saliency) + facecam YuNet; headless = server (sem GUI)
     "numpy==2.4.6",
     "openai==2.42.0",         # ganchos via LLM (M3; troque conforme provedor)
     "pillow==12.2.0",         # legenda karaoke (desenho); ffmpeg local nao tem libass
