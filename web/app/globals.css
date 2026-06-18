@@ -57,7 +57,7 @@ body {
 
 h1.hero {
   font-family: var(--pixel);
-  font-size: clamp(28px, 5vw, 58px);
+  font-size: clamp(28px, 4.7vw, 54px);
   line-height: 1.25;
   text-align: center;
   margin: 28px 0 18px;
@@ -193,7 +193,9 @@ h1.hero .ghost {
   font-size: 22px;
   color: var(--muted);
   text-align: center;
-  margin-top: 8px;
+  max-width: 840px;
+  margin: 8px auto 0;
+  line-height: 1.25;
 }
 
 .supports b {
@@ -307,11 +309,12 @@ h1.hero .ghost {
 .preview {
   border: 3px solid #ffffff55;
   aspect-ratio: 16 / 9;
-  background: linear-gradient(180deg, #16181d, #0a0b0e);
+  background: #0a0b0e;
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
+  overflow: hidden;
 }
 
 .preview .play {
@@ -320,6 +323,9 @@ h1.hero .ghost {
   border-left: 26px solid #fff;
   border-top: 16px solid transparent;
   border-bottom: 16px solid transparent;
+  position: relative;
+  z-index: 6;
+  filter: drop-shadow(4px 4px 0 #000);
 }
 
 .timecode {
@@ -352,13 +358,15 @@ h1.hero .ghost {
 
 .card .thumb {
   aspect-ratio: 9 / 16;
-  background: repeating-linear-gradient(45deg, #15171c, #15171c 6px, #0d0e12 6px, #0d0e12 12px);
+  background: #0d0e12;
   border: 2px solid #ffffff33;
   margin-bottom: 10px;
   display: flex;
   align-items: flex-start;
   justify-content: center;
   padding-top: 10px;
+  overflow: hidden;
+  position: relative;
 }
 
 .card .hook {
@@ -366,6 +374,10 @@ h1.hero .ghost {
   font-size: 11px;
   line-height: 1.4;
   color: var(--fg);
+  position: relative;
+  z-index: 6;
+  max-width: 86%;
+  text-shadow: 3px 3px 0 #000;
 }
 
 .card .tc {
@@ -373,6 +385,203 @@ h1.hero .ghost {
   font-size: 9px;
   color: var(--dim);
   margin-top: 8px;
+}
+
+/* ---------- pixel art demo window ---------- */
+.pixel-preview {
+  background:
+    radial-gradient(1px 1px at 18% 18%, #ffffff44 50%, transparent 51%),
+    radial-gradient(1px 1px at 78% 26%, #ffffff33 50%, transparent 51%),
+    linear-gradient(180deg, #181b22 0%, #101219 58%, #08090d 100%);
+}
+
+.pixel-preview::after,
+.pixel-thumb::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(0deg, transparent 0 9px, #ffffff06 9px 10px),
+    repeating-linear-gradient(90deg, transparent 0 9px, #0000002b 9px 10px);
+  mix-blend-mode: screen;
+  opacity: 0.35;
+  z-index: 5;
+}
+
+.px-cloud,
+.px-moon,
+.px-hills,
+.px-ground,
+.px-player,
+.px-enemy {
+  position: absolute;
+  display: block;
+  image-rendering: pixelated;
+}
+
+.px-cloud {
+  width: 34px;
+  height: 12px;
+  background: #f5f5f5;
+  box-shadow:
+    12px -7px 0 #d7dbe3,
+    26px 0 0 #a8aeb9,
+    -10px 5px 0 #777d88;
+  opacity: 0.85;
+  z-index: 2;
+}
+
+.px-cloud-a {
+  left: 36px;
+  top: 32px;
+}
+
+.px-cloud-b {
+  right: 78px;
+  top: 45px;
+  transform: scale(0.85);
+}
+
+.px-moon {
+  right: 34px;
+  top: 24px;
+  width: 18px;
+  height: 18px;
+  background: #f5f5f5;
+  box-shadow:
+    -8px 8px 0 #b9bec8,
+    8px 8px 0 #6f7580;
+  z-index: 1;
+}
+
+.px-hills {
+  left: 0;
+  right: 0;
+  bottom: 38px;
+  height: 76px;
+  background:
+    linear-gradient(135deg, transparent 0 36%, #5f6570 37% 52%, transparent 53%) 10% 100% / 40% 88% no-repeat,
+    linear-gradient(225deg, transparent 0 38%, #3e444d 39% 56%, transparent 57%) 92% 100% / 52% 100% no-repeat,
+    linear-gradient(135deg, transparent 0 42%, #222832 43% 60%, transparent 61%) 44% 100% / 46% 76% no-repeat;
+  opacity: 0.92;
+  z-index: 1;
+}
+
+.px-ground {
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 42px;
+  border-top: 4px solid #dfe2e8;
+  background:
+    repeating-linear-gradient(45deg, #161922 0 10px, #0d0f15 10px 20px);
+  z-index: 3;
+}
+
+.px-player {
+  left: 58px;
+  bottom: 42px;
+  width: 12px;
+  height: 12px;
+  background: #fff;
+  box-shadow:
+    0 -12px 0 #fff,
+    -12px 0 0 #fff,
+    12px 0 0 #fff,
+    0 12px 0 #d7dbe3,
+    -12px 24px 0 #fff,
+    12px 24px 0 #fff,
+    24px 0 0 #777d88;
+  z-index: 4;
+}
+
+.pixel-thumb {
+  background:
+    radial-gradient(1px 1px at 18% 20%, #ffffff33 50%, transparent 51%),
+    repeating-linear-gradient(45deg, #15171c 0 7px, #0d0e12 7px 14px);
+}
+
+.pixel-thumb .px-cloud {
+  transform: scale(0.38);
+  transform-origin: top left;
+  opacity: 0.7;
+}
+
+.pixel-thumb .mini-a {
+  left: 16px;
+  top: 24px;
+}
+
+.pixel-thumb .mini-b {
+  right: 24px;
+  top: 46px;
+}
+
+.pixel-thumb .px-hills {
+  bottom: 28px;
+  height: 76px;
+}
+
+.pixel-thumb .px-ground {
+  height: 30px;
+  border-top-width: 3px;
+}
+
+.pixel-thumb .px-player {
+  left: 26px;
+  bottom: 30px;
+  transform: scale(0.55);
+  transform-origin: bottom left;
+}
+
+.pixel-thumb .px-enemy {
+  right: 34px;
+  bottom: 36px;
+  width: 10px;
+  height: 10px;
+  background: #b9bec8;
+  box-shadow:
+    -10px 0 0 #b9bec8,
+    10px 0 0 #b9bec8,
+    0 -10px 0 #fff,
+    -10px 10px 0 #777d88,
+    10px 10px 0 #777d88;
+  z-index: 4;
+}
+
+.scene-castle .px-hills {
+  background:
+    linear-gradient(0deg, #3f4650 0 100%) 18% 100% / 18% 64% no-repeat,
+    linear-gradient(0deg, #6a717d 0 100%) 34% 100% / 12% 78% no-repeat,
+    linear-gradient(0deg, #3f4650 0 100%) 48% 100% / 18% 58% no-repeat;
+}
+
+.scene-boss .px-enemy {
+  transform: scale(1.35);
+  transform-origin: bottom right;
+  right: 48px;
+}
+
+.scene-race .px-player {
+  width: 26px;
+  height: 10px;
+  bottom: 34px;
+  background: #fff;
+  box-shadow:
+    -8px 10px 0 #777d88,
+    22px 10px 0 #777d88,
+    8px -10px 0 #d7dbe3;
+}
+
+.scene-race .px-enemy {
+  display: none;
+}
+
+.scene-peak .px-hills {
+  background:
+    linear-gradient(135deg, transparent 0 34%, #858b95 35% 52%, transparent 53%) 50% 100% / 78% 94% no-repeat,
+    linear-gradient(225deg, transparent 0 39%, #3a404a 40% 58%, transparent 59%) 84% 100% / 60% 80% no-repeat;
 }
 
 .foot {
@@ -734,7 +943,9 @@ h1.hero .ghost {
 }
 
 .feature-icon {
-  font-size: 30px;
+  font-family: var(--pixel);
+  font-size: 26px;
+  color: var(--fg);
   margin-bottom: 12px;
 }
 
@@ -799,7 +1010,7 @@ h1.hero .ghost {
 }
 
 .price-card {
-  width: min(520px, 94vw);
+  width: min(620px, 94vw);
   padding: 34px;
   text-align: center;
 }
@@ -1752,4 +1963,91 @@ h1.hero .ghost {
   font-size: 17px;
   color: var(--muted);
   margin-top: 8px;
+}
+
+/* ---------- clip card v2: controles nativos + badges + visual limpo ---------- */
+.clip-card {
+  padding: 10px;
+  gap: 10px;
+}
+.clip-video-wrap {
+  border: 2px solid var(--soft-2);
+}
+.clip-badges {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px;
+  pointer-events: none; /* deixa clicar nos controles do video por baixo */
+  z-index: 2;
+}
+.clip-badge-spacer {
+  flex: 1;
+}
+.clip-num {
+  font-family: var(--pixel);
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: #000;
+  background: var(--accent);
+  padding: 3px 7px;
+}
+.clip-viral {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+  font-family: var(--pixel);
+  font-size: 10px;
+  color: #000;
+  background: #fff;
+  padding: 3px 7px;
+}
+.clip-dur {
+  font-family: var(--pixel);
+  font-size: 10px;
+  color: #fff;
+  background: #000000b0;
+  padding: 3px 7px;
+  border: 1px solid #ffffff44;
+}
+.clip-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.clip-hook {
+  font-family: var(--pixel);
+  font-size: 11px;
+  line-height: 1.6;
+  min-height: 34px;
+  color: var(--fg);
+}
+.clip-novideo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--pixel);
+  font-size: 10px;
+  color: var(--dim);
+}
+.clip-desc {
+  border-color: var(--soft);
+}
+.clip-dl {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 2px solid var(--soft-2);
+  background: #0a0a0d;
+}
+.clip-dl:hover {
+  background: var(--accent);
+  color: #000;
+  border-color: var(--accent);
 }

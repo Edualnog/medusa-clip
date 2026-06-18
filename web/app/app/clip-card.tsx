@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { Icon } from "./icons";
 
 export type Clip = {
   id: string;
@@ -17,18 +18,22 @@ export function ClipCard({ clip }: { clip: Clip }) {
   const [copied, setCopied] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
 
+  // Preview no hover SEM atrapalhar o controle manual: o auto play/pause so age
+  // enquanto o video estiver MUDO (modo preview). Se o usuario tirar o mudo ou der
+  // play pelos controles, ele "engajou" e a gente nao mexe mais ao sair o mouse.
   function onEnter() {
     const v = videoRef.current;
-    if (v) v.play().catch(() => {});
+    if (v && v.paused && v.muted) v.play().catch(() => {});
   }
   function onLeave() {
     const v = videoRef.current;
-    if (!v) return;
-    v.pause();
-    try {
-      v.currentTime = 0.5; // volta pro frame de previa
-    } catch {
-      /* ignora */
+    if (v && v.muted) {
+      v.pause();
+      try {
+        v.currentTime = 0.5;
+      } catch {
+        /* ignora */
+      }
     }
   }
 
@@ -45,16 +50,7 @@ export function ClipCard({ clip }: { clip: Clip }) {
 
   return (
     <div className="clip-card box">
-      <div className="clip-card-top">
-        <span className="clip-num">{String(clip.idx).padStart(2, "0")}</span>
-        {clip.virality_score != null && (
-          <span className="clip-viral">🔥 {Math.round(clip.virality_score)}</span>
-        )}
-        <span className="clip-dur">{Math.round(clip.duration_s)}s</span>
-      </div>
-
       {clip.url ? (
-        // mostra um frame de previa (#t=0.5) e TOCA ao passar o mouse
         <div className="clip-video-wrap" onMouseEnter={onEnter} onMouseLeave={onLeave}>
           <video
             ref={videoRef}
@@ -63,30 +59,43 @@ export function ClipCard({ clip }: { clip: Clip }) {
             muted
             loop
             playsInline
+            controls
+            controlsList="nodownload noplaybackrate"
             preload="metadata"
           />
-          <span className="clip-play">▶</span>
+          <div className="clip-badges" aria-hidden>
+            <span className="clip-num">{String(clip.idx).padStart(2, "0")}</span>
+            <span className="clip-badge-spacer" />
+            {clip.virality_score != null && (
+              <span className="clip-viral">
+                <Icon name="spark" size={11} /> {Math.round(clip.virality_score)}
+              </span>
+            )}
+            <span className="clip-dur">{Math.round(clip.duration_s)}s</span>
+          </div>
         </div>
       ) : (
-        <div className="clip-video clip-novideo" />
+        <div className="clip-video-wrap clip-novideo">processando…</div>
       )}
 
-      {clip.hook && <div className="clip-hook">{clip.hook}</div>}
+      <div className="clip-body">
+        {clip.hook && <div className="clip-hook">{clip.hook}</div>}
 
-      {clip.description && (
-        <div className="clip-desc">
-          <p>{clip.description}</p>
-          <button className="copy-btn" onClick={copy}>
-            {copied ? "COPIADO ✓" : "COPIAR LEGENDA"}
-          </button>
-        </div>
-      )}
+        {clip.description && (
+          <div className="clip-desc">
+            <p>{clip.description}</p>
+            <button className="copy-btn" onClick={copy}>
+              {copied ? "COPIADO ✓" : "COPIAR LEGENDA"}
+            </button>
+          </div>
+        )}
 
-      {clip.url && (
-        <a className="clip-dl" href={clip.url} download={`clip_${clip.idx}.mp4`}>
-          ↧ BAIXAR
-        </a>
-      )}
+        {clip.url && (
+          <a className="clip-dl" href={clip.url} download={`clip_${clip.idx}.mp4`}>
+            <Icon name="film" size={14} /> BAIXAR
+          </a>
+        )}
+      </div>
     </div>
   );
 }

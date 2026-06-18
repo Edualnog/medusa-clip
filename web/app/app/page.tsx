@@ -75,7 +75,7 @@ function friendlyError(raw: string | null): { title: string; hint?: string } {
     return { title: "O vídeo parece inválido ou corrompido.", hint: "Tente outro arquivo — MP4 (H.264) é o mais compatível." };
   if (e.includes("yt-dlp") || e.includes("download") || e.includes("http error") || e.includes("403"))
     return { title: "Não consegui baixar esse link.", hint: "Confira se é público e tente de novo — ou use SUBIR ARQUIVO." };
-  return { title: "Algo deu errado ao processar o vídeo.", hint: "Tente de novo, ou use outro arquivo/link. Se persistir, me avise." };
+  return { title: "Não consegui processar esse vídeo.", hint: "Tente de novo ou use outro arquivo. Se continuar, confira se o vídeo abre normalmente (MP4 é o mais compatível)." };
 }
 
 export default function PainelPage() {
