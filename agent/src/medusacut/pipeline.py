@@ -121,6 +121,7 @@ def generate_clips(
         captions=captions,
         final_count=max_clips,
         min_len=lo,
+        max_len=hi,
         progress=_band(progress, 0.65, 1.0),
     )
 
@@ -143,6 +144,7 @@ def render_candidates(
     captions: bool = False,
     final_count: int | None = None,
     min_len: float | None = None,
+    max_len: float | None = None,
     progress: Progress | None = None,
 ) -> list[Clip]:
     """Score de viralizacao + reframe + render + LEGENDA + manifest.
@@ -209,7 +211,8 @@ def render_candidates(
         prepared, usage = _prepare_candidates(
             media, candidates, audio_path, game_context,
             score_virality=score_virality, final_count=keep, cache_dir=cache_dir,
-            min_len=min_len, progress=_band(progress, 0.0, 0.5),
+            min_len=min_len, max_len=max_len, video_dur=media.duration,
+            progress=_band(progress, 0.0, 0.5),
         )
         render_progress = _band(progress, 0.5, 1.0)
     else:
@@ -254,7 +257,7 @@ KEYFRAMES = 4
 
 def _prepare_candidates(
     media, candidates, audio_path, game_context, *, score_virality, final_count, cache_dir,
-    min_len=None, progress=None
+    min_len=None, max_len=None, video_dur=None, progress=None
 ):
     """Transcreve + (se pedido) pontua viralizacao em DUAS etapas e ranqueia.
 
@@ -313,7 +316,9 @@ def _prepare_candidates(
             kf_dir = os.path.join(cache_dir, f"kf_{int(cand.start * 1000)}")
             n_kf = max(KEYFRAMES, min(8, round((cand.end - cand.start) / 25)))
             imgs = frames.extract_keyframes(media.path, cand.start, cand.end, n=n_kf, out_dir=kf_dir)
-            hook = hooks.judge_candidate(cand, text, imgs, game_context)
+            hook = hooks.judge_candidate(
+                cand, text, imgs, game_context, min_len=min_len, max_len=max_len
+            )
             if hook.usage is not None:
                 usage_total = hook.usage if usage_total is None else usage_total + hook.usage
             if hook.refined_start is not None and hook.refined_end is not None:

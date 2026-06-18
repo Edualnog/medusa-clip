@@ -20,6 +20,10 @@ TARGET_H = 1920  # 9:16
 # Suavizacao do caminho (EMA) e quanto a janela pode andar entre amostras (px/s)
 # sao calibrados na pratica, vendo um corte real.
 SMOOTH_ALPHA = 0.25
+# Producao (build_plan): EMA de DUAS passadas (sem lag) mais forte + limite de
+# velocidade do pan, pra o enquadramento deslizar em vez de pular.
+SMOOTH_ALPHA_2PASS = 0.16
+MAX_PAN_PX_S = 240.0
 
 
 @dataclass
@@ -61,19 +65,40 @@ def smooth_centers(centers: list[float], alpha: float = SMOOTH_ALPHA) -> list[fl
     return out
 
 
+def smooth_centers_2pass(centers: list[float], alpha: float = SMOOTH_ALPHA_2PASS) -> list[float]:
+    """EMA pra frente E pra tras (fase zero): suaviza forte sem o lag/atraso da EMA
+    simples — o enquadramento fica fluido e ainda 'no tempo' da acao."""
+    if not centers:
+        return []
+    fwd: list[float] = []
+    acc = centers[0]
+    for c in centers:
+        acc = alpha * c + (1.0 - alpha) * acc
+        fwd.append(acc)
+    out = [0.0] * len(fwd)
+    acc = fwd[-1]
+    for i in range(len(fwd) - 1, -1, -1):
+        acc = alpha * fwd[i] + (1.0 - alpha) * acc
+        out[i] = acc
+    return out
+
+
 def centers_to_keyframes(
     samples: list[tuple[float, float]],
     width: int,
     crop_w: int,
     alpha: float = SMOOTH_ALPHA,
     cuts: list[float] | None = None,
+    *,
+    two_pass: bool = False,
+    slew_px_s: float | None = None,
 ) -> list[tuple[float, float]]:
     """Converte centros normalizados (0..1) em x de crop em pixels, suavizado e
     preso pra a janela 9:16 nao sair do frame.
 
     `cuts` sao tempos (relativos ao corte) de troca de cena: a suavizacao REINICIA
     em cada um, entao o enquadramento salta pra a nova cena em vez de varrer por
-    cima do corte."""
+    cima do corte. `two_pass`/`slew_px_s` (producao) deixam o pan fluido sem saltos."""
     if not samples:
         return [(0.0, float((width - crop_w) // 2))]
     cut_list = sorted(cuts or [])
@@ -81,10 +106,18 @@ def centers_to_keyframes(
     keyframes: list[tuple[float, float]] = []
 
     def flush(seg: list[tuple[float, float]]) -> None:
-        smoothed = smooth_centers([c for _, c in seg], alpha)
+        raw = [c for _, c in seg]
+        smoothed = smooth_centers_2pass(raw, alpha) if two_pass else smooth_centers(raw, alpha)
+        prev_x: float | None = None
+        prev_t: float | None = None
         for (t, _), cs in zip(seg, smoothed):
             x = min(max(cs * width - crop_w / 2.0, 0.0), float(max_x))
+            # limite de velocidade do pan: nao deixa "saltar" entre amostras
+            if slew_px_s is not None and prev_x is not None and prev_t is not None:
+                step = slew_px_s * max(1e-3, t - prev_t)
+                x = min(max(x, prev_x - step), prev_x + step)
             keyframes.append((t, round(x, 1)))
+            prev_x, prev_t = x, t
 
     seg: list[tuple[float, float]] = []
     ci = 0
@@ -124,7 +157,10 @@ def build_plan(
 
     samples = saliency.action_path(media, candidate, facecam_corner=facecam_corner)
     rel_cuts = [c - candidate.start for c in (cuts or []) if candidate.start < c < candidate.end]
-    keyframes = centers_to_keyframes(samples, media.width, cw, cuts=rel_cuts)
+    keyframes = centers_to_keyframes(
+        samples, media.width, cw, alpha=SMOOTH_ALPHA_2PASS, cuts=rel_cuts,
+        two_pass=True, slew_px_s=MAX_PAN_PX_S,
+    )
     if keyframes and keyframes[0][0] > 0.0:
         keyframes.insert(0, (0.0, keyframes[0][1]))  # garante comando em t=0
     return ReframePlan(cw, ch, target_w, target_h, keyframes, "dynamic_gameplay")

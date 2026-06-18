@@ -47,12 +47,27 @@ class HookResult:
     usage: object | None = None  # llm.Usage da chamada
 
 
-def _judge_user(candidate: Candidate, transcript_slice: str, game_context: str) -> str:
+def _judge_user(
+    candidate: Candidate,
+    transcript_slice: str,
+    game_context: str,
+    min_len: float | None = None,
+    max_len: float | None = None,
+) -> str:
+    if min_len is not None and max_len is not None:
+        dur_rule = (
+            f"O corte DEVE ter entre {min_len:.0f} e {max_len:.0f} segundos — escolha a "
+            f"duracao pelo conteudo (nao force o minimo; um bom momento pode pedir mais). "
+            f"best_start_s/best_end_s devem respeitar essa faixa."
+        )
+    else:
+        dur_rule = "Aperte o corte no melhor momento (best_start_s/best_end_s)."
     return (
         f"Contexto do jogo/canal: {game_context or 'desconhecido'}\n"
         f"Trecho candidato: {candidate.start:.1f}s a {candidate.end:.1f}s "
         f"(duracao {candidate.duration:.1f}s).\n"
         f'Transcricao do trecho:\n"""\n{transcript_slice or "(sem fala)"}\n"""\n\n'
+        f"{dur_rule}\n"
         "Responda um JSON com as chaves:\n"
         '  "hook": titulo/gancho curto e punchy (max ~60 caracteres),\n'
         '  "reason": 1-2 frases dizendo POR QUE prende (cite o principio de retencao),\n'
@@ -101,11 +116,14 @@ def judge_candidate(
     transcript_slice: str,
     frame_paths: list[str],
     game_context: str = "",
+    *,
+    min_len: float | None = None,
+    max_len: float | None = None,
 ) -> HookResult:
     """Etapa 2 (forte, MULTIMODAL): ve os frames + transcricao -> gancho/nota/refino."""
     from medusacut.llm import chat_json_multimodal
 
-    user = _judge_user(candidate, transcript_slice, game_context)
+    user = _judge_user(candidate, transcript_slice, game_context, min_len, max_len)
     data, usage = chat_json_multimodal(_JUDGE_SYSTEM, user, frame_paths)
     return _hook_from_data(data, candidate, usage)
 

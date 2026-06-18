@@ -19,10 +19,11 @@ from medusacut.types import Candidate, ScoreTrack
 # por geracao (preset). Antes 60/180 com piso 60 -> tudo saia exatamente 60s.
 MIN_LEN = 15.0
 MAX_LEN = 90.0
-# Fracao do pico ate onde a janela cresce ("ainda tem acao aqui?").
-SUSTAIN_FRAC = 0.15
+# Fracao do pico ate onde a janela cresce ("ainda tem acao aqui?"). Mais baixo =
+# janelas crescem mais (mais variedade de duracao; menos cortes colando no minimo).
+SUSTAIN_FRAC = 0.09
 # Tolera vales curtos abaixo do limiar sem encerrar a janela (segundos).
-GAP_TOL_SEC = 1.5
+GAP_TOL_SEC = 3.0
 # Folga antes/depois pra dar contexto e nao cortar seco.
 PAD_IN = 1.5
 PAD_OUT = 0.7
