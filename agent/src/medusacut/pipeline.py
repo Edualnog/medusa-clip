@@ -160,14 +160,29 @@ def render_candidates(
         detected = facecam_mod.detect_facecam(media.path)
         if detected:
             facecam_box = detected
-            facecam_info = {"auto": True, "detected": True, "box": list(detected)}
+            facecam_info = {"auto": True, "method": "yunet", "box": list(detected)}
         else:
-            facecam_box = facecam_rect("tr")  # fallback seguro
-            facecam_info = {"auto": True, "detected": False, "box": list(facecam_box)}
-            print(
-                "[medusacut] facecam nao detectado (sem rosto estavel); usando preset top-right",
-                file=sys.stderr,
+            # Sem rosto estavel -> fallback VLM (pega VTuber/avatar/handcam que o
+            # detector de rosto ignora). 1 chamada por job, so quando o rosto falha.
+            from medusacut.frames import extract_keyframes
+            from medusacut.reframe.facecam_vlm import detect_facecam_vlm
+
+            _report(progress, 0.0, "Detectando facecam (visao)…")
+            kf = extract_keyframes(
+                media.path, 0.0, media.duration, n=3,
+                out_dir=os.path.join(out_dir, "_facecam"),
             )
+            vlm_box = detect_facecam_vlm(kf) if kf else None
+            if vlm_box:
+                facecam_box = vlm_box
+                facecam_info = {"auto": True, "method": "vlm", "box": list(vlm_box)}
+            else:
+                facecam_box = facecam_rect("tr")  # ultimo fallback: preset
+                facecam_info = {"auto": True, "method": "preset", "box": list(facecam_box)}
+                print(
+                    "[medusacut] facecam nao detectado (rosto nem VLM); usando preset top-right",
+                    file=sys.stderr,
+                )
 
     keep = final_count or len(candidates)
     # 3+6. transcrever (p/ legenda e/ou score) + analise viral 2 etapas -> re-rank.
