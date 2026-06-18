@@ -841,3 +841,36 @@ h1.hero .ghost {
     grid-template-columns: 1fr;
   }
 }
+
+/* ---------- aba APIs (status da chave) ---------- */
+.key-status {
+  font-family: var(--pixel);
+  font-size: 12px;
+  letter-spacing: 1px;
+  color: var(--fg);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.dot-on {
+  width: 12px;
+  height: 12px;
+  background: #7CFC9B;
+  display: inline-block;
+}
+
+.link-btn {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-family: var(--body);
+  font-size: 17px;
+  text-decoration: underline;
+  cursor: pointer;
+  margin-left: auto;
+}
+
+.link-btn:hover {
+  color: #ff5a5a;
+}
