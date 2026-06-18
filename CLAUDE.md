@@ -2,83 +2,112 @@
 
 Contexto para o Claude Code. Leia antes de codar.
 
+> ⚠️ MUDANCA DE DIRECAO (2026-06-17): o projeto deixou de ser ferramenta pessoal e
+> virou **SaaS**. Tudo abaixo reflete a nova premissa. O motor de cortes (Python)
+> que ja existia foi reaproveitado como **agente local** — nada se perdeu.
+
 ## O que e
 
-**Ferramenta PESSOAL e LOCAL** (um unico usuario: o dono) que recebe um **link do
-YouTube** e gera **cortes verticais 9:16 de gameplay** com qualidade nivel Opus
-Clip — bons ganchos, boas legendas, bom enquadramento. Roda via CLI, escreve os
-cortes numa pasta. Sem nuvem, sem contas, sem cobranca.
+**SaaS para criadores de games**: o usuario faz login, conecta a **propria** chave
+da OpenRouter, cola um link do YouTube e recebe **cortes verticais 9:16** com
+qualidade nivel Opus Clip (ganchos, legenda karaoke, enquadramento). Assinatura
+simples e barata (~R$11,90/mes), **sem sistema de creditos** — o custo de IA e do
+usuario (chave dele).
 
-## O que ISTO NAO E (nao construa)
+## Arquitetura: web + Supabase + AGENTE LOCAL
 
-Nao e SaaS. **Nao adicione** API web, frontend, fila, workers, banco de dados,
-auth, billing, storage em nuvem, multi-usuario, nem modelo de creators. Se a
-vontade de "preparar pra escalar" aparecer, ignore — o objetivo e uma ferramenta
-afiada pra uma pessoa so.
+O processamento de video (download, ffmpeg, whisper) e **pesado e demorado** —
+NAO roda em serverless (Vercel). Entao roda **na maquina do usuario**, via um
+agente local. A web e o "painel de controle"; o Supabase e o backend.
+
+```
+WEB (Next.js @ Vercel)            AGENTE LOCAL (Python, ex-pipeline)
+  landing 8-bit + login            loga no Supabase (como o user)
+  aba "APIs": chave OpenRouter     pega jobs do user
+  cola link -> cria job            baixa+corta NO PC do user
+  biblioteca de clipes            usa a chave do PROPRIO user (local)
+  assinatura                       reporta progresso/clipes
+        \                                   /
+         \------------ SUPABASE ----------/
+          (auth + Postgres + storage + realtime = o backend)
+```
+
+- **Sem servidor de processamento proprio** → custo de operacao ~zero (sustenta
+  a assinatura barata). O usuario traz a propria chave E a propria maquina.
+- O Supabase e o "message bus": a web cria um `job`, o agente le, executa e
+  escreve progresso/resultado de volta; a web mostra em realtime.
+
+## Regras inegociaveis (seguranca + modelo)
+
+- **BYO key**: cada usuario usa a PROPRIA chave da OpenRouter. **NUNCA** publicar
+  a chave do dono nem rodar IA "as custas da casa". A chave do usuario fica no
+  Supabase com RLS + criptografada, **nunca** volta pro navegador depois de salva,
+  e e usada pelo agente **localmente**.
+- **Sem creditos**: a cobranca e assinatura; o custo de IA e do usuario.
+- **Multi-tenant de verdade**: RLS no Supabase em TODAS as tabelas — um usuario so
+  enxerga os proprios dados.
+- **Download/render rodam no PC do usuario** (evita custo central e o problema de
+  baixar do YouTube do lado do servidor).
 
 ## Onde mora a qualidade ("nivel Opus Clip")
 
-Num tool pessoal, qualidade nao vem de infra — vem de tres alavancas. Gaste a
-energia AQUI:
+Continua no agente (`agent/src/medusacut/`), inalterado pela virada SaaS:
 
-1. **Gancho + score** (`hooks/`): LLM forte sobre o trecho transcrito gera o
-   titulo/hook e pontua viralizacao. Maior fator de retencao. Custo de LLM e
-   irrelevante em uso pessoal — use o melhor modelo.
-2. **Legenda karaoke** (`caption/`): legenda queimada estilo gamer, palavra a
-   palavra. Metade da performance de um short.
-3. **Reframe/composicao** (`reframe/`): facecam + acao compostos em 9:16.
+1. **Analise viral multimodal + multi-modelo** (`hooks/`, `frames.py`, `llm.py`):
+   triagem barata (texto) -> juiz forte que VE keyframes -> re-rank. Maior alavanca.
+2. **Legenda karaoke** (`caption/`): queimada, palavra a palavra, estilo gamer.
+3. **Reframe** (`reframe/`): segue a acao (ciente de corte de cena), facecam
+   auto-detectado, layouts (facecam-em-cima, fundo desfocado).
 
-A selecao de momento e por **fusao de sinais** (audio + cena [+ chat se houver]),
-nao por transcricao — e onde os concorrentes falham em gameplay. Transcricao
-serve p/ legenda e p/ alimentar o gancho, nao p/ achar o corte.
+Selecao de momento por **fusao de sinais** (audio + cena), nao por transcricao.
 
-## Arquitetura (simples de proposito)
-
-Um pacote Python `medusacut` rodado por CLI. Fluxo sincrono, um video por vez:
+## Monorepo
 
 ```
-link YouTube → ingest (yt-dlp) → preprocess (ffmpeg) → transcribe (whisper)
-  → sinais → fusao → top-N → GANCHO+score → reframe → render+legenda
-  → out/clip_NN.mp4 + out/manifest.json
+agent/    # Python: o motor de cortes (ex-`medusacut`) + virara worker do Supabase
+  src/medusacut/  cli.py · pipeline.py · types.py · llm.py · frames.py
+                  ingest/ transcribe/ signals/ hooks/ reframe/ caption/ render/ ui/
+  tests/  pyproject.toml  Makefile  docs/ARCHITECTURE.md
+web/      # Next.js (App Router) @ Vercel: landing 8-bit, auth, painel, biblioteca
+supabase/ # schema/migrations, RLS, policies
 ```
-
-O `manifest.json` lista hook, score, reason e arquivo de cada corte, pra voce
-abrir a pasta e escolher os melhores.
-
-## Rodar local (Apple Silicon)
-
-- `ffmpeg` via Homebrew (`brew install ffmpeg`).
-- Transcricao: `faster-whisper` funciona; em Apple Silicon, `whisper.cpp` (Metal)
-  ou `mlx-whisper` sao mais rapidos. A interface em `transcribe/` permite trocar
-  sem mexer no pipeline.
-- Ganchos via API de LLM na nuvem (chave no `.env`).
-
-## Ordem de implementacao
-
-Meta: corte BOM saindo de um link real. Fatias verticais, uma de cada vez:
-
-1. `ingest/youtube.py` (yt-dlp baixa video) + preprocess (ffmpeg).
-2. `signals/audio_energy.py` + `signals/fusion.py` → candidatos.
-3. `reframe/layouts.py::GameplayOnly` + `render/ffmpeg.py` → **primeiro corte
-   ponta a ponta** (mesmo cru). Marco que destrava tudo.
-4. `transcribe/` (whisper, timestamps) + `caption/` (legenda karaoke).
-5. `hooks/base.py` (gancho + score) → ordenar candidatos por viralizacao.
-6. `signals/scene_change.py`, depois `reframe/facecam.py` + layout com facecam.
-7. Opcionais: `signals/chat_velocity.py` (chat replay YouTube), `game_event`.
 
 ## Convencoes
 
+**Agente (Python)**
 - Python 3.11+, type hints, `from __future__ import annotations`.
-- Deps pesadas (yt_dlp, whisper, ffmpeg) importadas DENTRO de funcoes, nunca no
-  topo de modulo — mantem `import medusacut` leve.
-- Cada capacidade nova vem com teste em `tests/`.
-- Pin de versoes no install (stack de ML e fragil).
-- `out/`, `.env` e arquivos de video NUNCA entram no git.
+- Deps pesadas (yt_dlp, faster_whisper, cv2, openai, PIL) importadas DENTRO das
+  funcoes — `import medusacut` continua leve.
+- Cada capacidade nova vem com teste em `agent/tests/`.
+- Versoes pinadas no `pyproject` (stack de ML e fragil).
+
+**Web (Next.js)**
+- TypeScript, App Router. Estilo **8-bit gamer** (ver design de referencia): fonte
+  pixel (Press Start 2P), fundo preto estrelado, bordas pixeladas.
+- Supabase client; auth + RLS; nada de segredo no client.
+
+**Geral**
+- `out/`, `.env`, `.env*.local`, arquivos de video e `node_modules` NUNCA entram
+  no git. Segredos so em `.env*.local` (web) / `.env` (agente) e no Supabase.
+- O dono conecta as contas (Supabase, Vercel) e passa as chaves; o Claude escreve
+  o codigo.
+
+## Status / roadmap
+
+- [x] Motor de cortes (agente) completo: viral multimodal, legenda, reframe, custo.
+- [ ] **Fase 1**: landing 8-bit + shell web + login Supabase.  ← em andamento
+- [ ] Fase 2: aba APIs (salvar chave OpenRouter, RLS/cripto).
+- [ ] Fase 3: jobs + agente local conectado ao Supabase.
+- [ ] Fase 4: biblioteca de clipes + progresso realtime.
+- [ ] Fase 5: assinatura (Stripe/Mercado Pago).
+- [ ] Fase 6: empacotar/instalar o agente + onboarding.
 
 ## Comandos
 
 ```bash
-make setup
-make run URL="https://youtube.com/watch?v=..."
-make test
+# agente (motor de cortes)
+cd agent && make setup && make test
+
+# web
+cd web && npm install && npm run dev   # http://localhost:3000
 ```

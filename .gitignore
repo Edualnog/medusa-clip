@@ -1,9 +1,18 @@
+# --- agente (Python) ---
 out/
 .env
 .venv/
 __pycache__/
 *.pyc
 *.egg-info/
+
+# --- web (Next.js / Vercel) ---
+node_modules/
+.next/
+.vercel/
+*.tsbuildinfo
+next-env.d.ts
+.env*.local
 # arquivos de video/audio nunca entram no git
 *.mp4
 *.mkv
