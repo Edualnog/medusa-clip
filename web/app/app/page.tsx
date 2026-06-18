@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { ClipCard, type Clip } from "./clip-card";
 
 type Job = {
   id: string;
@@ -11,28 +13,15 @@ type Job = {
   error: string | null;
 };
 
-type Clip = {
-  id: string;
-  idx: number;
-  hook: string | null;
-  description: string | null;
-  virality_score: number | null;
-  duration_s: number;
-  url: string | null;
-  created_at: string;
-};
-
 type Stats = { clipsTotal: number; jobsDone: number; costUsd: number; totalTokens: number };
 
 export default function PainelPage() {
   const [url, setUrl] = useState("");
   const [jobs, setJobs] = useState<Job[]>([]);
-  // mapa por id: clipes ja carregados NAO sao refetchados (evita o video recarregar)
   const [clipsById, setClipsById] = useState<Map<string, Clip>>(new Map());
   const [stats, setStats] = useState<Stats>({ clipsTotal: 0, jobsDone: 0, costUsd: 0, totalTokens: 0 });
   const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
   const [creating, setCreating] = useState(false);
-  const [copied, setCopied] = useState<string | null>(null);
   const hadActive = useRef(false);
 
   const loadClips = useCallback(async () => {
@@ -59,7 +48,7 @@ export default function PainelPage() {
     const list: Job[] = (await r.json()).jobs;
     setJobs(list);
     const active = list.some((j) => j.status === "queued" || j.status === "processing");
-    if (hadActive.current && !active) loadClips(); // um job acabou -> busca clipes novos
+    if (hadActive.current && !active) loadClips();
     hadActive.current = active;
   }, [loadClips]);
 
@@ -90,17 +79,9 @@ export default function PainelPage() {
     setCreating(false);
   }
 
-  async function copy(id: string, text: string) {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(id);
-      setTimeout(() => setCopied((c) => (c === id ? null : c)), 1500);
-    } catch {
-      /* clipboard bloqueado */
-    }
-  }
-
-  const clips = [...clipsById.values()].sort((a, b) => b.created_at.localeCompare(a.created_at));
+  const recent = [...clipsById.values()]
+    .sort((a, b) => b.created_at.localeCompare(a.created_at))
+    .slice(0, 3);
   const active = jobs.find((j) => j.status === "queued" || j.status === "processing");
   const failed = jobs.find((j) => j.status === "error");
 
@@ -109,7 +90,7 @@ export default function PainelPage() {
       <div className="painel-head">
         <div>
           <h1 className="painel-title">PAINEL DE CLIPS</h1>
-          <p className="painel-sub">Gere e gerencie os melhores momentos dos seus gameplays.</p>
+          <p className="painel-sub">Gere os melhores momentos dos seus gameplays.</p>
         </div>
         <div className="painel-badge">🎬 {stats.clipsTotal} CLIPS</div>
       </div>
@@ -144,44 +125,6 @@ export default function PainelPage() {
       )}
       {failed && !active && <div className="box job-failed">⚠ Último job falhou: {failed.error}</div>}
 
-      <div className="painel-section">
-        <div className="badge">CLIPS GERADOS ({clips.length})</div>
-      </div>
-      {clips.length === 0 ? (
-        <div className="empty">Nenhum clip ainda — cole um link e gere. 🎮</div>
-      ) : (
-        <div className="clip-grid">
-          {clips.map((c) => (
-            <div className="clip-card box" key={c.id}>
-              <div className="clip-card-top">
-                <span className="clip-num">{String(c.idx).padStart(2, "0")}</span>
-                {c.virality_score != null && <span className="clip-viral">🔥 {Math.round(c.virality_score)}</span>}
-                <span className="clip-dur">{Math.round(c.duration_s)}s</span>
-              </div>
-              {c.url ? (
-                <video className="clip-video" src={c.url} controls preload="metadata" playsInline />
-              ) : (
-                <div className="clip-video clip-novideo" />
-              )}
-              {c.hook && <div className="clip-hook">{c.hook}</div>}
-              {c.description && (
-                <div className="clip-desc">
-                  <p>{c.description}</p>
-                  <button className="copy-btn" onClick={() => copy(c.id, c.description!)}>
-                    {copied === c.id ? "COPIADO ✓" : "COPIAR LEGENDA"}
-                  </button>
-                </div>
-              )}
-              {c.url && (
-                <a className="clip-dl" href={c.url} download={`clip_${c.idx}.mp4`}>
-                  ↧ BAIXAR
-                </a>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-
       <div className="box stats-bar">
         <div className="stat">
           <span className="stat-label">VÍDEOS ANALISADOS</span>
@@ -197,6 +140,20 @@ export default function PainelPage() {
           <span className="stat-sub">{stats.totalTokens.toLocaleString("pt-BR")} tokens</span>
         </div>
       </div>
+
+      {recent.length > 0 && (
+        <>
+          <div className="painel-section recent-head">
+            <div className="badge">ÚLTIMOS CLIPES</div>
+            <Link href="/app/biblioteca" className="nav-link recent-all">VER TUDO →</Link>
+          </div>
+          <div className="clip-grid">
+            {recent.map((c) => (
+              <ClipCard key={c.id} clip={c} />
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 }
