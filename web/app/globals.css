@@ -1738,3 +1738,18 @@ h1.hero .ghost {
   color: var(--accent);
   border-color: var(--soft-2);
 }
+
+/* erro de job com instrucao */
+.job-failed-title {
+  font-family: var(--pixel);
+  font-size: 12px;
+  letter-spacing: 1px;
+  color: #ff8a8a;
+  line-height: 1.5;
+}
+.job-failed-hint {
+  font-family: var(--body);
+  font-size: 17px;
+  color: var(--muted);
+  margin-top: 8px;
+}

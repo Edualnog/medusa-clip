@@ -58,6 +58,26 @@ function putWithProgress(
   });
 }
 
+// Traduz o erro cru (yt-dlp/pipeline) num recado claro + o que o usuario deve fazer.
+function friendlyError(raw: string | null): { title: string; hint?: string } {
+  const e = (raw || "").toLowerCase();
+  if (e.includes("not a bot") || e.includes("confirm you") || e.includes("sign in to confirm"))
+    return { title: "O YouTube bloqueou o download (IP de servidor).", hint: "Use SUBIR ARQUIVO, ou um link do Google Drive / Dropbox / .mp4 direto." };
+  if (e.includes("requested format") || e.includes("storyboard"))
+    return { title: "O YouTube não liberou esse vídeo pra download.", hint: "Use SUBIR ARQUIVO ou um link do Drive/Dropbox." };
+  if (e.includes("googledrive") || e.includes("drive.google"))
+    return { title: "Não consegui acessar esse arquivo do Google Drive.", hint: "No Drive: Compartilhar → Acesso geral → “Qualquer pessoa com o link” (leitor). Depois cole o link de novo." };
+  if (e.includes("dropbox"))
+    return { title: "Não consegui baixar esse link do Dropbox.", hint: "Confira se o link é público (compartilhável) e tente de novo." };
+  if (e.includes("sem chave") || e.includes("api conectada") || e.includes("openrouter"))
+    return { title: "Conecte sua chave da OpenRouter primeiro.", hint: "Vá na aba CHAVES API e salve a sua chave." };
+  if (e.includes("metadados") || e.includes("nao encontrado") || e.includes("invalid"))
+    return { title: "O vídeo parece inválido ou corrompido.", hint: "Tente outro arquivo — MP4 (H.264) é o mais compatível." };
+  if (e.includes("yt-dlp") || e.includes("download") || e.includes("http error") || e.includes("403"))
+    return { title: "Não consegui baixar esse link.", hint: "Confira se é público e tente de novo — ou use SUBIR ARQUIVO." };
+  return { title: "Algo deu errado ao processar o vídeo.", hint: "Tente de novo, ou use outro arquivo/link. Se persistir, me avise." };
+}
+
 export default function PainelPage() {
   const [mode, setMode] = useState<"upload" | "link">("upload");
   const [file, setFile] = useState<File | null>(null);
@@ -330,7 +350,14 @@ export default function PainelPage() {
           <div className="job-stage">{active.stage ?? "Aguardando o worker pegar o job…"}</div>
         </div>
       )}
-      {failed && !active && <div className="box job-failed">⚠ Último job falhou: {failed.error}</div>}
+      {failed && !active && (
+        <div className="box job-failed">
+          <div className="job-failed-title">⚠ {friendlyError(failed.error).title}</div>
+          {friendlyError(failed.error).hint && (
+            <div className="job-failed-hint">{friendlyError(failed.error).hint}</div>
+          )}
+        </div>
+      )}
 
       {/* clipes */}
       <div className="painel-section recent-head">
