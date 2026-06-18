@@ -1710,3 +1710,31 @@ h1.hero .ghost {
 .gen2-placeholder {
   color: var(--dim);
 }
+
+/* ---------- abas do hero (upload | link) ---------- */
+.gen2-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 2px;
+}
+
+.gen2-tab {
+  font-family: var(--pixel);
+  font-size: 10px;
+  letter-spacing: 1px;
+  padding: 9px 16px;
+  background: transparent;
+  color: var(--dim);
+  border: 2px solid var(--soft);
+  border-bottom: none;
+  cursor: pointer;
+}
+
+.gen2-tab:hover {
+  color: var(--fg);
+}
+
+.gen2-tab.active {
+  color: var(--accent);
+  border-color: var(--soft-2);
+}

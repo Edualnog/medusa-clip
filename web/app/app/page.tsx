@@ -59,7 +59,9 @@ function putWithProgress(
 }
 
 export default function PainelPage() {
+  const [mode, setMode] = useState<"upload" | "link">("upload");
   const [file, setFile] = useState<File | null>(null);
+  const [url, setUrl] = useState("");
   const [uploadPct, setUploadPct] = useState<number | null>(null);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [clipsById, setClipsById] = useState<Map<string, Clip>>(new Map());
@@ -147,48 +149,58 @@ export default function PainelPage() {
     };
   }, [loadClips, loadJobs]);
 
+  const [min_len, max_len] = DUR[durPreset];
+  const options = {
+    layout,
+    captions,
+    max_clips: maxClips,
+    min_len,
+    max_len,
+    facecam_auto: facecamCorner === "auto",
+    facecam_corner: facecamCorner === "auto" ? null : facecamCorner,
+    score_virality: true,
+  };
+
+  async function criarJob(body: object, okMsg: string) {
+    const r = await fetch("/api/jobs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error ?? "Falhou ao criar o job.");
+    setMsg({ kind: "ok", text: okMsg });
+    await loadJobs();
+  }
+
   async function gerar(e: React.FormEvent) {
     e.preventDefault();
-    if (!file || creating) return;
+    if (creating) return;
     setCreating(true);
     setMsg(null);
-    const ct = file.type || "video/mp4";
     try {
-      // 1. pede a URL assinada de upload (valida formato/tamanho + BYO key)
-      const up = await fetch("/api/upload", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ contentType: ct, size: file.size }),
-      });
-      const upData = await up.json().catch(() => ({}));
-      if (!up.ok) throw new Error(upData.error ?? "Falha ao preparar o upload.");
-
-      // 2. sobe o arquivo direto pro R2 (com barra de progresso)
-      await putWithProgress(upData.uploadUrl, file, ct, setUploadPct);
-
-      // 3. cria o job apontando pra chave do upload
-      const [min_len, max_len] = DUR[durPreset];
-      const options = {
-        layout,
-        captions,
-        max_clips: maxClips,
-        min_len,
-        max_len,
-        facecam_auto: facecamCorner === "auto",
-        facecam_corner: facecamCorner === "auto" ? null : facecamCorner,
-        score_virality: true,
-      };
-      const r = await fetch("/api/jobs", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ upload_key: upData.key, options }),
-      });
-      const data = await r.json().catch(() => ({}));
-      if (!r.ok) throw new Error(data.error ?? "Falhou ao criar o job.");
-
-      setMsg({ kind: "ok", text: "Vídeo enviado! Está na fila — começa já." });
-      setFile(null);
-      await loadJobs();
+      if (mode === "link") {
+        // worker baixa o link no servidor (Drive/Dropbox/.mp4 direto — sem bloqueio)
+        if (url.trim().length < 8) throw new Error("Cole um link válido.");
+        await criarJob({ url: url.trim(), options }, "Link na fila — o servidor vai baixar e cortar.");
+        setUrl("");
+      } else {
+        if (!file) throw new Error("Escolha um vídeo.");
+        const ct = file.type || "video/mp4";
+        // 1. URL assinada de upload (valida formato/tamanho + BYO key)
+        const up = await fetch("/api/upload", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ contentType: ct, size: file.size }),
+        });
+        const upData = await up.json().catch(() => ({}));
+        if (!up.ok) throw new Error(upData.error ?? "Falha ao preparar o upload.");
+        // 2. sobe direto pro R2 (com progresso)
+        await putWithProgress(upData.uploadUrl, file, ct, setUploadPct);
+        // 3. cria o job
+        await criarJob({ upload_key: upData.key, options }, "Vídeo enviado! Está na fila — começa já.");
+        setFile(null);
+      }
     } catch (err) {
       setMsg({ kind: "err", text: err instanceof Error ? err.message : "Erro inesperado." });
     } finally {
@@ -218,20 +230,44 @@ export default function PainelPage() {
 
       {/* hero: gerar */}
       <form onSubmit={gerar} className="gen2 box">
+        <div className="gen2-tabs">
+          <button type="button" className={`gen2-tab${mode === "upload" ? " active" : ""}`} onClick={() => setMode("upload")}>
+            SUBIR ARQUIVO
+          </button>
+          <button type="button" className={`gen2-tab${mode === "link" ? " active" : ""}`} onClick={() => setMode("link")}>
+            COLAR LINK
+          </button>
+        </div>
+
         <div className="gen2-bar">
-          <label className="gen2-input gen2-file">
-            <span aria-hidden><Icon name="film" size={20} /></span>
-            <input
-              type="file"
-              accept="video/mp4,video/quicktime,video/webm,video/x-matroska"
-              hidden
-              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-            />
-            <span className={file ? "gen2-filename" : "gen2-filename gen2-placeholder"}>
-              {file ? file.name : "Escolha o vídeo do seu gameplay (MP4/MOV)…"}
-            </span>
-          </label>
-          <button className="gen2-btn" type="submit" disabled={creating || !file}>
+          {mode === "upload" ? (
+            <label className="gen2-input gen2-file">
+              <span aria-hidden><Icon name="film" size={20} /></span>
+              <input
+                type="file"
+                accept="video/mp4,video/quicktime,video/webm,video/x-matroska"
+                hidden
+                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+              />
+              <span className={file ? "gen2-filename" : "gen2-filename gen2-placeholder"}>
+                {file ? file.name : "Escolha o vídeo do seu gameplay (MP4/MOV)…"}
+              </span>
+            </label>
+          ) : (
+            <label className="gen2-input">
+              <span aria-hidden><Icon name="link" size={20} /></span>
+              <input
+                placeholder="Cole o link do Google Drive, Dropbox ou .mp4 direto…"
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+              />
+            </label>
+          )}
+          <button
+            className="gen2-btn"
+            type="submit"
+            disabled={creating || (mode === "upload" ? !file : url.trim().length < 8)}
+          >
             {creating ? (uploadPct != null ? `${uploadPct}%` : "...") : "✦ GERAR"}
           </button>
         </div>
@@ -273,7 +309,11 @@ export default function PainelPage() {
           </label>
         </div>
 
-        <p className="gen2-hint">ⓘ Suba o seu gameplay (MP4/MOV até 5 GB) — processa na nuvem com a sua chave.</p>
+        <p className="gen2-hint">
+          {mode === "upload"
+            ? "ⓘ Suba o gameplay (MP4/MOV até 5 GB) — processa na nuvem com a sua chave."
+            : "ⓘ Cole um link do Drive/Dropbox/.mp4 — o servidor baixa direto (mais rápido que subir)."}
+        </p>
       </form>
       {msg && <p className={msg.kind === "ok" ? "dash-note" : "msg"} style={{ textAlign: "center" }}>{msg.text}</p>}
 
