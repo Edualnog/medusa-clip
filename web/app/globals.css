@@ -920,3 +920,229 @@ h1.hero .ghost {
   color: #ff5a5a;
   flex: 1 1 100%;
 }
+
+/* ---------- Painel de Clips (dashboard redesenhado) ---------- */
+.painel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 22px;
+}
+
+.painel-title {
+  font-family: var(--pixel);
+  font-size: clamp(22px, 3.5vw, 34px);
+  margin: 0 0 8px;
+  letter-spacing: 1px;
+  text-shadow: 3px 3px 0 #000;
+}
+
+.painel-sub {
+  font-family: var(--body);
+  font-size: 20px;
+  color: var(--muted);
+  margin: 0;
+}
+
+.painel-badge {
+  font-family: var(--pixel);
+  font-size: 12px;
+  letter-spacing: 1px;
+  border: 3px solid var(--line);
+  padding: 12px 16px;
+  background: #0a0a0d;
+  white-space: nowrap;
+}
+
+.gen-box {
+  display: flex;
+  gap: 14px;
+  padding: 18px;
+  align-items: stretch;
+  flex-wrap: wrap;
+}
+
+.gen-box .input {
+  flex: 1;
+  min-width: 240px;
+}
+
+.gen-hint {
+  font-family: var(--body);
+  font-size: 18px;
+  color: var(--dim);
+  margin: 10px 2px 0;
+}
+
+/* job ativo + barra de progresso */
+.job-active {
+  padding: 18px;
+  margin-top: 18px;
+}
+
+.job-active-top {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--pixel);
+  font-size: 12px;
+  letter-spacing: 1px;
+  color: #ffd11a;
+  margin-bottom: 12px;
+}
+
+.progress {
+  height: 18px;
+  border: 3px solid var(--line);
+  background: #0a0a0d;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: #ffd11a;
+  transition: width 0.4s ease;
+}
+
+.job-stage {
+  font-family: var(--body);
+  font-size: 18px;
+  color: var(--muted);
+  margin-top: 10px;
+}
+
+.job-failed {
+  padding: 16px 18px;
+  margin-top: 18px;
+  font-family: var(--body);
+  font-size: 18px;
+  color: #ff5a5a;
+  border-color: #ff5a5a;
+}
+
+.painel-section {
+  margin: 34px 0 0;
+}
+
+/* grid de clipes */
+.clip-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.clip-card {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.clip-card-top {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--pixel);
+  font-size: 11px;
+  letter-spacing: 1px;
+}
+
+.clip-num {
+  color: #000;
+  background: #fff;
+  padding: 4px 8px;
+}
+
+.clip-dur {
+  color: var(--muted);
+  align-self: center;
+}
+
+.clip-video {
+  width: 100%;
+  aspect-ratio: 9 / 16;
+  background: #000;
+  border: 2px solid #ffffff33;
+  object-fit: cover;
+}
+
+.clip-novideo {
+  background: repeating-linear-gradient(45deg, #15171c, #15171c 6px, #0d0e12 6px, #0d0e12 12px);
+}
+
+.clip-hook {
+  font-family: var(--pixel);
+  font-size: 12px;
+  line-height: 1.5;
+  min-height: 36px;
+}
+
+.vbar {
+  position: relative;
+  height: 22px;
+  border: 2px solid var(--line);
+  background: #0a0a0d;
+  display: flex;
+  align-items: center;
+}
+
+.vbar-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  background: #ff7a1a55;
+}
+
+.vbar span {
+  position: relative;
+  font-family: var(--pixel);
+  font-size: 10px;
+  padding-left: 8px;
+  color: var(--fg);
+}
+
+.clip-dl {
+  font-family: var(--pixel);
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-align: center;
+  border: 3px solid var(--line);
+  padding: 10px;
+  color: var(--fg);
+  text-decoration: none;
+  background: #0a0a0d;
+}
+
+.clip-dl:hover {
+  background: #fff;
+  color: #000;
+}
+
+/* barra de stats */
+.stats-bar {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+  padding: 20px 24px;
+  margin-top: 30px;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.stat-label {
+  font-family: var(--pixel);
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: var(--muted);
+}
+
+.stat-val {
+  font-family: var(--pixel);
+  font-size: 24px;
+}
