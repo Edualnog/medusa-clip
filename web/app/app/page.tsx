@@ -137,14 +137,19 @@ export default function PainelPage() {
 
       {/* hero: gerar */}
       <form onSubmit={gerar} className="gen2 box">
-        <label className="gen2-input">
-          <span aria-hidden><Icon name="link" size={20} /></span>
-          <input
-            placeholder="Cole o link do seu vídeo de gameplay aqui..."
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-          />
-        </label>
+        <div className="gen2-bar">
+          <label className="gen2-input">
+            <span aria-hidden><Icon name="link" size={20} /></span>
+            <input
+              placeholder="Cole o link do seu vídeo de gameplay aqui..."
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+            />
+          </label>
+          <button className="gen2-btn" type="submit" disabled={creating || url.trim().length < 8}>
+            {creating ? "..." : "✦ GERAR"}
+          </button>
+        </div>
 
         <div className="opts-row gen2-opts">
           <label className="opt">
@@ -183,9 +188,6 @@ export default function PainelPage() {
           </label>
         </div>
 
-        <button className="gen2-btn" type="submit" disabled={creating || url.trim().length < 8}>
-          {creating ? "..." : "✦  OBTER CLIPES EM 1 CLIQUE  ✦"}
-        </button>
         <p className="gen2-hint">ⓘ Suporta YouTube, TikTok e muito mais — processa na nuvem com a sua chave.</p>
       </form>
       {msg && <p className={msg.kind === "ok" ? "dash-note" : "msg"} style={{ textAlign: "center" }}>{msg.text}</p>}

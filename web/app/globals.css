@@ -1448,13 +1448,21 @@ h1.hero .ghost {
   gap: 18px;
 }
 
+.gen2-bar {
+  display: flex;
+  align-items: stretch;
+}
+
 .gen2-input {
+  flex: 1;
   display: flex;
   align-items: center;
   gap: 12px;
   border: 3px solid var(--line);
+  border-right: none;
   background: #0a0a0d;
   padding: 18px 20px;
+  min-width: 0;
 }
 
 .gen2-input span {
@@ -1478,9 +1486,10 @@ h1.hero .ghost {
 
 .gen2-btn {
   font-family: var(--pixel);
-  font-size: 16px;
+  font-size: 15px;
   letter-spacing: 1px;
-  padding: 20px;
+  padding: 0 34px;
+  white-space: nowrap;
   background: var(--fg);
   color: #000;
   border: 3px solid var(--fg);
