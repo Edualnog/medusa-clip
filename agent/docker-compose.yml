@@ -15,9 +15,9 @@ services:
       - pot-provider
     volumes:
       - whisper-cache:/cache/huggingface
-      # cookies vivem na VPS (fora do git/imagem). Read-WRITE de proposito: o yt-dlp
-      # reescreve o arquivo com os cookies rotacionados, prolongando a sessao.
-      - /opt/zorothax/cookies:/cookies
+      # cookies vivem na VPS (fora do git/imagem). READ-ONLY: o worker usa uma copia
+      # por job (o yt-dlp reescreveria e degradaria o original). Mantem a fonte intacta.
+      - /opt/zorothax/cookies:/cookies:ro
 
   # Gera PO tokens pro yt-dlp (necessario pra baixar YouTube de IP de datacenter).
   pot-provider:

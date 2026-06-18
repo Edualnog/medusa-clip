@@ -46,7 +46,16 @@ def download(
     # usuario assinado resolvem. Caminho vem do env; nunca commitado.
     cookies = os.environ.get("YTDLP_COOKIES")
     if cookies and os.path.exists(cookies):
-        ydl_opts["cookiefile"] = cookies
+        # Usa uma COPIA: o yt-dlp reescreve o cookiefile (rotaciona) e isso degradava
+        # o arquivo-fonte. Copiando, o original (read-only) fica intacto e dura mais.
+        import shutil  # noqa: PLC0415
+
+        ck = os.path.join(dest_dir, "_cookies.txt")
+        try:
+            shutil.copyfile(cookies, ck)
+            ydl_opts["cookiefile"] = ck
+        except OSError:
+            ydl_opts["cookiefile"] = cookies
     # PO token provider (plugin bgutil): YouTube de IP de datacenter exige PO token.
     pot_base = os.environ.get("YTDLP_POT_BASEURL")
     if pot_base:
