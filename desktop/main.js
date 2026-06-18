@@ -30,7 +30,7 @@ function enginePath() {
 }
 
 function libraryRoot() {
-  const dir = path.join(app.getPath("downloads"), "Zorothax");
+  const dir = path.join(app.getPath("downloads"), "Medusa Clip");
   fs.mkdirSync(dir, { recursive: true });
   return dir;
 }
@@ -46,7 +46,7 @@ function createWindow() {
     height: 820,
     minWidth: 900,
     backgroundColor: "#060608",
-    title: "Zorothax",
+    title: "Medusa Clip",
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,

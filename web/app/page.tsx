@@ -1,4 +1,4 @@
-// Landing 8-bit do Zorothax. Estatica por enquanto — auth + app vem nas
+// Landing 8-bit do Medusa Clip. Estatica por enquanto — auth + app vem nas
 // proximas fases. O design segue a referencia pixel/gamer.
 import { Fragment } from "react";
 import Link from "next/link";
@@ -6,7 +6,7 @@ import { MedusaLogo } from "./medusa-logo";
 
 const STEPS = [
   { icon: "gamepad", title: "1. ENVIE O GAMEPLAY", text: "Suba o vídeo ou cole um link público" },
-  { icon: "ai", title: "2. IA ANALISA", text: "A Zorothax acha os momentos com mais ação" },
+  { icon: "ai", title: "2. IA ANALISA", text: "A Medusa Clip acha os momentos com mais ação" },
   { icon: "swords", title: "3. CORTES PRONTOS", text: "Gera clipes 9:16 com gancho, legenda e reframe" },
   { icon: "trophy", title: "4. POSTE ONDE QUISER", text: "Baixe e publique no TikTok, Reels ou Shorts" },
 ];
@@ -23,7 +23,7 @@ const FEATURES = [
   {
     icon: "▣",
     title: "FEITO PRA GAMEPLAY",
-    text: "Cortadores genéricos dependem demais da fala. A Zorothax procura ação, pico de áudio, troca de cena, reação, kill, clutch e fail.",
+    text: "Cortadores genéricos dependem demais da fala. A Medusa Clip procura ação, pico de áudio, troca de cena, reação, kill, clutch e fail.",
   },
   {
     icon: "◎",
@@ -40,12 +40,12 @@ const FEATURES = [
 const USAGE = [
   { n: "1", title: "CRIE SUA CONTA", text: "Cadastro rápido, sem cartão pra testar." },
   { n: "2", title: "CONECTE SUA CHAVE", text: "Cole sua chave da OpenRouter (fica segura, criptografada). Você paga só o uso real da IA." },
-  { n: "3", title: "ENVIE E GERE", text: "Suba um arquivo ou cole um link. A Zorothax processa na nuvem e entrega os cortes." },
+  { n: "3", title: "ENVIE E GERE", text: "Suba um arquivo ou cole um link. A Medusa Clip processa na nuvem e entrega os cortes." },
 ];
 
 const FAQ = [
   {
-    q: "Por que a Zorothax é diferente?",
+    q: "Por que a Medusa Clip é diferente?",
     a: "Porque é focada em gameplay: acha kill, clutch, fail e reação por sinais de áudio e cena, e a IA vê a tela.",
   },
   {
@@ -101,7 +101,7 @@ export default function Home() {
     <>
       <nav className="nav">
         <span className="brand">
-          <MedusaLogo size={30} /> ZOROTHAX
+          <MedusaLogo size={30} /> MEDUSA CLIP
         </span>
         <Link href="/login" className="nav-link">ENTRAR</Link>
       </nav>
@@ -211,9 +211,9 @@ export default function Home() {
         </div>
       </div>
 
-      {/* por que zorothax */}
+      {/* por que medusa clip */}
       <div className="section-tag">
-        <div className="badge">POR QUE ZOROTHAX</div>
+        <div className="badge">POR QUE MEDUSA CLIP</div>
       </div>
       <div className="features">
         {FEATURES.map((f) => (
@@ -245,7 +245,7 @@ export default function Home() {
       </div>
       <div className="row-center">
         <div className="box price-card">
-          <div className="plan-name">ZOROTHAX PRO</div>
+          <div className="plan-name">MEDUSA CLIP PRO</div>
           <div className="plan-price">
             R$11,90<span>/mês</span>
           </div>
@@ -274,7 +274,7 @@ export default function Home() {
         ))}
       </div>
 
-      <p className="foot">© 2026 Zorothax. All rights reserved.</p>
+      <p className="foot">© 2026 Medusa Clip. All rights reserved.</p>
       </main>
     </>
   );

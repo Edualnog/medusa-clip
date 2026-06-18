@@ -17,7 +17,7 @@ const body = VT323({
 });
 
 export const metadata: Metadata = {
-  title: "Zorothax — clips de games perfeitos",
+  title: "Medusa Clip — clips de games perfeitos",
   description:
     "Transforme vídeos de games em clips verticais 9:16 com IA. Ganchos, legendas e enquadramento automático.",
 };
