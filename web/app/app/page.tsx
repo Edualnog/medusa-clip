@@ -213,7 +213,7 @@ export default function PainelPage() {
         <Link href="/app/biblioteca" className="nav-link recent-all">VER TUDO →</Link>
       </div>
       {recent.length === 0 ? (
-        <div className="empty">Nenhum clip ainda — cole um link e gere. 🎮</div>
+        <div className="empty">Nenhum clip ainda — cole um link e gere.</div>
       ) : (
         <div className="clip-grid">
           {recent.map((c) => (
@@ -225,7 +225,7 @@ export default function PainelPage() {
       {/* stats */}
       <div className="box stats-bar">
         <div className="stat">
-          <span className="stat-label">VÍDEOS ANALISADOS</span>
+          <span className="stat-label">VIDEOS ANALISADOS</span>
           <span className="stat-val">{stats.jobsDone}</span>
         </div>
         <div className="stat">
@@ -233,7 +233,7 @@ export default function PainelPage() {
           <span className="stat-val">{stats.clipsTotal}</span>
         </div>
         <div className="stat">
-          <span className="stat-label">💸 GASTO DE IA</span>
+          <span className="stat-label"><Icon name="coin" size={12} /> GASTO DE IA</span>
           <span className="stat-val">${stats.costUsd.toFixed(4)}</span>
           <span className="stat-sub">{stats.totalTokens.toLocaleString("pt-BR")} tokens</span>
         </div>
