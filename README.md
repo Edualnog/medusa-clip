@@ -54,7 +54,7 @@ vídeo local ou link público
 ```text
 agent/      motor Python, pipeline de vídeo, worker legado e testes
 desktop/    aplicativo Electron e empacotamento multiplataforma
-web/        site Next.js; será reduzido para landing, autenticação e downloads
+web/        landing Next.js e autenticação Supabase; downloads vêm na próxima etapa
 supabase/   schemas e policies; inclui tabelas legadas do protótipo cloud
 docs/       documentação de arquitetura e setup
 ```
@@ -67,7 +67,8 @@ docs/       documentação de arquitetura e setup
 - análise viral multimodal via OpenRouter;
 - reframe dinâmico, detecção de facecam e legenda karaokê;
 - aplicativo Electron funcional e build `.dmg` sem assinatura;
-- protótipo web/cloud ainda presente no código e pendente de simplificação;
+- painel e APIs de processamento cloud removidos da aplicação web;
+- landing ainda precisa da comunicação local-first e dos downloads por plataforma;
 - autenticação Supabase já existe na web; login desktop, licenciamento e builds
   automatizados ainda estão pendentes.
 

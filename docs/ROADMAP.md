@@ -36,11 +36,11 @@ vídeo. Nenhum arquivo de gameplay precisa passar pelo backend do produto.
 - empacotamento inicial para macOS com PyInstaller e electron-builder;
 - landing e identidade visual em Next.js;
 - autenticação Supabase implementada no protótipo web;
+- painel, biblioteca, R2 e APIs de processamento cloud removidos da web;
 - 49 testes unitários do motor passando.
 
 ### Parcial ou legado
 
-- web ainda contém painel, R2 e APIs de processamento cloud do protótipo anterior;
 - worker de VPS e migrations Supabase permanecem no repositório como legado;
 - chave OpenRouter do desktop ainda é salva em arquivo local sem cofre do sistema;
 - build web passa após a remoção da página experimental `/spike` e de `mp4box`;

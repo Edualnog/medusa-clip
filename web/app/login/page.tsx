@@ -24,14 +24,14 @@ export default function LoginPage() {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) setMsg(error.message);
       else {
-        router.push("/app");
+        router.push("/");
         router.refresh();
       }
     } else {
       const { data, error } = await supabase.auth.signUp({ email, password });
       if (error) setMsg(error.message);
       else if (data.session) {
-        router.push("/app");
+        router.push("/");
         router.refresh();
       } else {
         setMsg("Conta criada! Confirme o e-mail e depois entre.");
@@ -81,9 +81,13 @@ export default function LoginPage() {
         </form>
         <p className="switch">
           {mode === "login" ? "Não tem conta? " : "Já tem conta? "}
-          <a onClick={() => { setMode(mode === "login" ? "signup" : "login"); setMsg(null); }}>
+          <button
+            type="button"
+            className="switch-button"
+            onClick={() => { setMode(mode === "login" ? "signup" : "login"); setMsg(null); }}
+          >
             {mode === "login" ? "Criar conta" : "Entrar"}
-          </a>
+          </button>
         </p>
       </div>
     </main>

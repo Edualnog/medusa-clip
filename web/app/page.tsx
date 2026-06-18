@@ -130,7 +130,7 @@ export default function Home() {
           <span aria-hidden>🔗</span>
           <input placeholder="Suba um vídeo ou cole um link no painel..." readOnly />
         </label>
-        <Link className="btn" href="/app">
+        <Link className="btn" href="/login">
           COMEÇAR AGORA →
         </Link>
       </div>

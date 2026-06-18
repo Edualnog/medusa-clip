@@ -699,7 +699,12 @@ h1.hero .ghost {
   margin-top: 18px;
 }
 
-.auth .switch a {
+.auth .switch-button {
+  appearance: none;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  font: inherit;
   color: #fff;
   cursor: pointer;
   text-decoration: underline;
