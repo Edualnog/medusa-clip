@@ -19,6 +19,50 @@ const DEMO_CLIPS = [
   { hook: "EPIC WIN!", tc: "01:02 - 01:18" },
 ];
 
+const FEATURES = [
+  {
+    icon: "🎮",
+    title: "FEITO PRA GAMES",
+    text: "Genéricos tipo OpusClip cortam por transcrição e não entendem gameplay. A Medusa acha o momento por FUSÃO DE SINAIS (áudio + cena): kill, clutch, fail, reação.",
+  },
+  {
+    icon: "👁",
+    title: "A IA VÊ A TELA",
+    text: "Nosso juiz é MULTIMODAL: olha os frames do corte, não só a legenda. Acerta o que é realmente épico — gameplay é visual.",
+  },
+  {
+    icon: "⚡",
+    title: "MUITO MAIS BARATO",
+    text: "Você usa SUA própria chave de IA e paga centavos por vídeo, direto. Sem créditos inflados. A assinatura é só da ferramenta.",
+  },
+];
+
+const USAGE = [
+  { n: "1", title: "CRIE SUA CONTA", text: "Cadastro rápido, sem cartão pra testar." },
+  { n: "2", title: "CONECTE SUA CHAVE", text: "Cole sua chave da OpenRouter (fica segura). Você paga só o uso real da IA." },
+  { n: "3", title: "BAIXE O AGENTE", text: "Um app leve que roda no SEU PC — é ele que corta o vídeo (rápido e privado)." },
+  { n: "4", title: "COLE O LINK E GERE", text: "Cole o link do gameplay e receba os melhores cortes, prontos pro TikTok." },
+];
+
+const FAQ = [
+  {
+    q: "É melhor que o OpusClip pra games?",
+    a: "Sim. Eles são genéricos; a Medusa é focada em gameplay — acha kill/clutch/fail por sinais de áudio e cena, e a IA vê a tela.",
+  },
+  {
+    q: "Preciso instalar algo?",
+    a: "Um agente leve que roda no seu PC. O corte é local — por isso é rápido e barato (sem servidor caro no meio).",
+  },
+  {
+    q: "Por que usar minha própria chave?",
+    a: "Você paga o custo real da IA (centavos por vídeo), sem créditos inflados. Mais transparente e muito mais barato que os concorrentes.",
+  },
+  {
+    q: "Funciona com qualquer jogo?",
+    a: "Sim. Áudio + cena funcionam pra qualquer gameplay, de FPS a simulador.",
+  },
+];
+
 function Icon({ name }: { name: string }) {
   const p = { fill: "none", stroke: "currentColor", strokeWidth: 2 } as const;
   switch (name) {
@@ -153,6 +197,69 @@ export default function Home() {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* por que medusa (foco gamer vs opusclip) */}
+      <div className="section-tag">
+        <div className="badge">POR QUE MEDUSA CUT</div>
+      </div>
+      <div className="features">
+        {FEATURES.map((f) => (
+          <div className="feature box" key={f.title}>
+            <div className="feature-icon" aria-hidden>{f.icon}</div>
+            <h3>{f.title}</h3>
+            <p>{f.text}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* como o usuario usa (BYO key + agente) */}
+      <div className="section-tag">
+        <div className="badge">COMO VOCÊ USA</div>
+      </div>
+      <div className="usage">
+        {USAGE.map((u) => (
+          <div className="usage-step box" key={u.n}>
+            <div className="usage-n">{u.n}</div>
+            <h3>{u.title}</h3>
+            <p>{u.text}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* preco */}
+      <div className="section-tag">
+        <div className="badge">PREÇO · 1 PLANO, SEM CRÉDITOS</div>
+      </div>
+      <div className="row-center">
+        <div className="box price-card">
+          <div className="plan-name">MEDUSA PRO</div>
+          <div className="plan-price">
+            R$11,90<span>/mês</span>
+          </div>
+          <ul className="dash-list">
+            <li>✓ Clips ilimitados (você usa sua própria chave de IA)</li>
+            <li>✓ Sem créditos — custo de IA real, direto na OpenRouter</li>
+            <li>✓ Análise viral multimodal + legenda karaokê + reframe automático</li>
+            <li>✓ Processamento no seu PC (rápido e privado)</li>
+          </ul>
+          <Link href="/login" className="btn full">
+            COMEÇAR AGORA →
+          </Link>
+        </div>
+      </div>
+
+      {/* faq */}
+      <div className="section-tag">
+        <div className="badge">FAQ</div>
+      </div>
+      <div className="faq">
+        {FAQ.map((f) => (
+          <div className="faq-item box" key={f.q}>
+            <h4>{f.q}</h4>
+            <p>{f.a}</p>
+          </div>
+        ))}
       </div>
 
       <p className="foot">Medusa Cut · clips de games nível Opus Clip</p>

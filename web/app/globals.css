@@ -715,3 +715,129 @@ h1.hero .ghost {
     flex: 1 1 100%;
   }
 }
+
+/* ---------- landing: features / usage / preco / faq ---------- */
+.features {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 18px;
+  margin-top: 6px;
+}
+
+.feature {
+  padding: 24px;
+}
+
+.feature-icon {
+  font-size: 30px;
+  margin-bottom: 12px;
+}
+
+.feature h3 {
+  font-family: var(--pixel);
+  font-size: 13px;
+  letter-spacing: 1px;
+  margin: 0 0 12px;
+}
+
+.feature p {
+  font-family: var(--body);
+  font-size: 19px;
+  line-height: 1.25;
+  color: var(--muted);
+  margin: 0;
+}
+
+.feature p b,
+.usage-step p b {
+  color: var(--fg);
+}
+
+.usage {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  margin-top: 6px;
+}
+
+.usage-step {
+  padding: 22px;
+}
+
+.usage-n {
+  font-family: var(--pixel);
+  font-size: 24px;
+  color: var(--fg);
+  background: #14151a;
+  border: 3px solid var(--line);
+  width: 46px;
+  height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 14px;
+}
+
+.usage-step h3 {
+  font-family: var(--pixel);
+  font-size: 12px;
+  letter-spacing: 1px;
+  margin: 0 0 10px;
+}
+
+.usage-step p {
+  font-family: var(--body);
+  font-size: 18px;
+  line-height: 1.25;
+  color: var(--muted);
+  margin: 0;
+}
+
+.price-card {
+  width: min(520px, 94vw);
+  padding: 34px;
+  text-align: center;
+}
+
+.price-card .plan-price {
+  margin: 14px 0 18px;
+}
+
+.price-card .dash-list {
+  text-align: left;
+  font-size: 19px;
+  margin-bottom: 22px;
+}
+
+.faq {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-top: 6px;
+}
+
+.faq-item {
+  padding: 22px;
+}
+
+.faq-item h4 {
+  font-family: var(--pixel);
+  font-size: 12px;
+  letter-spacing: 1px;
+  margin: 0 0 12px;
+  line-height: 1.5;
+}
+
+.faq-item p {
+  font-family: var(--body);
+  font-size: 19px;
+  line-height: 1.25;
+  color: var(--muted);
+  margin: 0;
+}
+
+@media (max-width: 760px) {
+  .faq {
+    grid-template-columns: 1fr;
+  }
+}
