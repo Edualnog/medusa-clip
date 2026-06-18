@@ -44,19 +44,41 @@ servidor). Rode `cd web && npm run dev`.
    domínio; a Vercel te dá os registros DNS (um `A`/`CNAME`) pra colar no painel do
    teu registrador. HTTPS sai automático.
 
-## 3) VPS — o worker  ⏳ (Fase 3)
+## 3) VPS — o worker  (Fase 3)
 
-Quando a Fase 3 estiver pronta, o passo a passo será (eu te guio ao vivo):
-1. Crie a VPS (Ubuntu 22.04+) na Hostinger (KVM 2 ou 4).
-2. Instale Docker: `curl -fsSL https://get.docker.com | sh`.
-3. Eu te entrego um `agent/Dockerfile` + `docker-compose.yml`. Você cria um
-   `.env` no servidor com `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`,
-   `KEY_ENCRYPTION_SECRET`.
-4. `docker compose up -d` → o worker fica rodando, escutando a fila de jobs.
-5. Storage dos clipes: bucket no Supabase Storage (eu configuro as policies).
+O `agent/Dockerfile` + `docker-compose.yml` já existem. Passo a passo na VPS Ubuntu:
 
-**Limites pra proteger a VPS:** 1 job por vez (KVM 2) / ~2 (KVM 4), via fila.
-Limpa os temporários a cada job. Sobe só o resultado pro Storage.
+```bash
+# 1. acessar (Hostinger te dá o IP + senha root)
+ssh root@SEU_IP
+
+# 2. instalar Docker
+curl -fsSL https://get.docker.com | sh
+
+# 3. colocar o código na VPS (escolha um):
+#    (a) Git (melhor p/ atualizar depois): repo no GitHub -> git clone <url>
+#    (b) rápido, do seu Mac:  rsync -av --exclude .venv --exclude out agent/ root@SEU_IP:/root/medusacut/
+cd /root/medusacut          # (ou medusa-cut/agent, conforme o clone)
+
+# 4. criar o .env do worker (cole os MESMOS 3 valores do web/.env.local)
+cat > .env <<'ENV'
+SUPABASE_URL=https://xukvtvggqdirvbrqqdjw.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=<cole>
+KEY_ENCRYPTION_SECRET=<cole o mesmo do web>
+ENV
+
+# 5. subir (a 1ª build demora alguns min: instala ffmpeg + stack de ML)
+docker compose up -d --build
+
+# 6. ver os logs — deve aparecer "conectado ao Supabase; escutando a fila…"
+docker compose logs -f
+```
+
+Atualizar depois: `git pull` (ou rsync de novo) + `docker compose up -d --build`.
+
+**Notas:** 1 job por vez (KVM 2) / ~2 (KVM 4). No 1º job o whisper baixa o modelo
+(fica em volume, não rebaixa). Temporários são limpos a cada job; só o clipe final
+vai pro Storage.
 
 ---
 
