@@ -91,7 +91,8 @@ export default function ApisPage() {
 
       <p className="hint">
         🔒 Guardada <b>criptografada</b> (AES-256) e protegida por RLS — nunca volta
-        pro navegador, só os 4 últimos dígitos. Só o seu agente local a usa.
+        pro navegador, só os 4 últimos dígitos. Só o nosso motor (no servidor) a usa
+        pra gerar seus cortes.
       </p>
     </div>
   );

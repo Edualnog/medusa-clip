@@ -24,8 +24,8 @@ export default function GerarPage() {
       </div>
 
       <p className="hint">
-        ⚠️ Conecte sua chave (aba <b>APIs</b>) e seu <b>agente local</b> (aba AGENTE)
-        pra começar. Geração em construção (Fase 3).
+        ⚠️ Conecte sua chave na aba <b>CHAVES API</b>. A geração roda no nosso
+        servidor — em construção (Fase 3).
       </p>
 
       <div className="badge" style={{ marginTop: 36 }}>

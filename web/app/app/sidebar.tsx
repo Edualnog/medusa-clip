@@ -8,8 +8,7 @@ import { MedusaLogo } from "../medusa-logo";
 const LINKS = [
   { href: "/app", label: "GERAR", icon: "🔗" },
   { href: "/app/biblioteca", label: "BIBLIOTECA", icon: "🎬" },
-  { href: "/app/apis", label: "APIs", icon: "🔑" },
-  { href: "/app/agente", label: "AGENTE", icon: "🖥" },
+  { href: "/app/apis", label: "CHAVES API", icon: "🔑" },
   { href: "/app/conta", label: "CONTA", icon: "👤" },
 ];
 
