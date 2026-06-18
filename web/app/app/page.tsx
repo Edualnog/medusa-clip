@@ -273,7 +273,7 @@ export default function PainelPage() {
           </label>
         </div>
 
-        <p className="gen2-hint">ⓘ Suba o seu gameplay (MP4/MOV até 2 GB) — processa na nuvem com a sua chave.</p>
+        <p className="gen2-hint">ⓘ Suba o seu gameplay (MP4/MOV até 5 GB) — processa na nuvem com a sua chave.</p>
       </form>
       {msg && <p className={msg.kind === "ok" ? "dash-note" : "msg"} style={{ textAlign: "center" }}>{msg.text}</p>}
 

@@ -6,7 +6,7 @@ import { signedUploadUrl } from "@/lib/r2";
 
 export const runtime = "nodejs";
 
-const MAX_BYTES = 2 * 1024 * 1024 * 1024; // 2 GB
+const MAX_BYTES = 5 * 1024 * 1024 * 1024; // 5 GB (teto de um PUT unico no R2)
 const OK_TYPES = new Set(["video/mp4", "video/quicktime", "video/webm", "video/x-matroska"]);
 
 // Devolve uma URL assinada pra subir o video direto no R2. O worker depois baixa
@@ -23,7 +23,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Formato não suportado (use MP4/MOV/WEBM/MKV)." }, { status: 400 });
   }
   if (typeof size !== "number" || size <= 0 || size > MAX_BYTES) {
-    return NextResponse.json({ error: "Arquivo muito grande (máx 2 GB)." }, { status: 400 });
+    return NextResponse.json({ error: "Arquivo muito grande (máx 5 GB)." }, { status: 400 });
   }
 
   // exige a chave conectada (BYO key) — mesma regra do job
@@ -42,7 +42,8 @@ export async function POST(req: Request) {
 
   const ext = contentType === "video/quicktime" ? "mov" : contentType.split("/")[1] || "mp4";
   const key = `uploads/${user.id}/${randomUUID()}.${ext}`;
-  const uploadUrl = await signedUploadUrl(key, contentType);
+  // validade longa: upload de arquivo grande em conexao lenta pode demorar
+  const uploadUrl = await signedUploadUrl(key, contentType, 7200);
 
   return NextResponse.json({ uploadUrl, key });
 }
