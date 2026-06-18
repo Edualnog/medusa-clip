@@ -59,7 +59,7 @@ def _keyframe_motion(path: str, times: list[float], hop: float, n: int) -> list[
     cmd = [
         "ffmpeg", "-nostdin", "-loglevel", "error", "-skip_frame", "nokey",
         "-i", path, "-vf", f"scale={_W}:{_H},format=gray",
-        "-fps_mode", "passthrough", "-f", "rawvideo", "-",
+        "-vsync", "passthrough", "-f", "rawvideo", "-",
     ]
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, bufsize=10**7)
     fb = _W * _H

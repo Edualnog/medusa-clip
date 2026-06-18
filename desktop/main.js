@@ -26,7 +26,12 @@ function saveConfig(c) {
 function enginePath() {
   if (process.env.ENGINE_BIN) return process.env.ENGINE_BIN;
   if (app.isPackaged) return path.join(process.resourcesPath, "engine", "medusacut-engine");
-  return "/tmp/medusa_e2e/dist/medusacut-engine/medusacut-engine";
+  return path.join(__dirname, "engine", "medusacut-engine"); // dev: engine/ montada
+}
+// ffmpeg/ffprobe vivem na mesma pasta do motor -> entram no PATH do subprocesso
+function engineEnv() {
+  const dir = path.dirname(enginePath());
+  return { ...process.env, PATH: dir + path.delimiter + (process.env.PATH || "") };
 }
 
 function libraryRoot() {
@@ -181,7 +186,7 @@ ipcMain.on("generate", (_e, opts) => {
   if (opts.key) args.push("--key", opts.key);
 
   try {
-    child = spawn(enginePath(), args, { env: process.env });
+    child = spawn(enginePath(), args, { env: engineEnv() });
   } catch (e) {
     win.webContents.send("job-error", { message: "Não consegui iniciar o motor: " + e.message });
     return;
