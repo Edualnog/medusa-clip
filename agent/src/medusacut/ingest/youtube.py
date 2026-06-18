@@ -41,6 +41,12 @@ def download(
         "fragment_retries": 10,
         "extractor_retries": 3,
     }
+    # Cookies de uma conta logada (autenticacao legitima — NAO e burlar bloqueio).
+    # YouTube barra IP de datacenter com "confirm you're not a bot"; cookies de um
+    # usuario assinado resolvem. Caminho vem do env; nunca commitado.
+    cookies = os.environ.get("YTDLP_COOKIES")
+    if cookies and os.path.exists(cookies):
+        ydl_opts["cookiefile"] = cookies
     if on_progress is not None:
         ydl_opts["progress_hooks"] = [_make_progress_hook(on_progress)]
 

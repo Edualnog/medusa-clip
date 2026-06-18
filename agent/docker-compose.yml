@@ -5,9 +5,14 @@ services:
   worker:
     build: .
     env_file: .env
+    environment:
+      # cookies do YouTube (conta logada) montados read-only; opcional.
+      YTDLP_COOKIES: /cookies/youtube.txt
     restart: unless-stopped
     volumes:
       - whisper-cache:/cache/huggingface
+      # arquivo de cookies vive na VPS (fora do git/imagem), montado read-only
+      - /opt/zorothax/cookies:/cookies:ro
 
 volumes:
   whisper-cache:
