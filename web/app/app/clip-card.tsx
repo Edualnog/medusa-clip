@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 export type Clip = {
   id: string;
@@ -15,6 +15,22 @@ export type Clip = {
 
 export function ClipCard({ clip }: { clip: Clip }) {
   const [copied, setCopied] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  function onEnter() {
+    const v = videoRef.current;
+    if (v) v.play().catch(() => {});
+  }
+  function onLeave() {
+    const v = videoRef.current;
+    if (!v) return;
+    v.pause();
+    try {
+      v.currentTime = 0.5; // volta pro frame de previa
+    } catch {
+      /* ignora */
+    }
+  }
 
   async function copy() {
     if (!clip.description) return;
@@ -38,16 +54,19 @@ export function ClipCard({ clip }: { clip: Clip }) {
       </div>
 
       {clip.url ? (
-        // previa "viva": toca em loop, sem som (igual galeria de clipes)
-        <video
-          className="clip-video"
-          src={clip.url}
-          muted
-          loop
-          autoPlay
-          playsInline
-          preload="metadata"
-        />
+        // mostra um frame de previa (#t=0.5) e TOCA ao passar o mouse
+        <div className="clip-video-wrap" onMouseEnter={onEnter} onMouseLeave={onLeave}>
+          <video
+            ref={videoRef}
+            className="clip-video"
+            src={`${clip.url}#t=0.5`}
+            muted
+            loop
+            playsInline
+            preload="metadata"
+          />
+          <span className="clip-play">▶</span>
+        </div>
       ) : (
         <div className="clip-video clip-novideo" />
       )}
