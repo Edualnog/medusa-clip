@@ -19,7 +19,7 @@ const body = VT323({
 export const metadata: Metadata = {
   title: "Zorothax — clips de games perfeitos",
   description:
-    "Transforme vídeos de games em clips verticais 9:16 com IA. Ganchos, legendas e enquadramento nível Opus Clip.",
+    "Transforme vídeos de games em clips verticais 9:16 com IA. Ganchos, legendas e enquadramento automático.",
 };
 
 export default function RootLayout({

@@ -5,56 +5,56 @@ import Link from "next/link";
 import { MedusaLogo } from "./medusa-logo";
 
 const STEPS = [
-  { icon: "gamepad", title: "1. COLE O LINK", text: "Cole o link do seu vídeo de gameplay" },
-  { icon: "ai", title: "2. IA ANALISA", text: "Nossa IA encontra as melhores jogadas e momentos do vídeo" },
-  { icon: "swords", title: "3. CORTES ÉPICOS", text: "Criamos clips de jogadas épicas, wins, fails e momentos engraçados" },
-  { icon: "trophy", title: "4. BAIXE E COMPARTILHE", text: "Baixe, edite como quiser e publique para sua comunidade" },
+  { icon: "gamepad", title: "1. ENVIE O GAMEPLAY", text: "Suba o vídeo ou cole um link público" },
+  { icon: "ai", title: "2. IA ANALISA", text: "A Zorothax acha os momentos com mais ação" },
+  { icon: "swords", title: "3. CORTES PRONTOS", text: "Gera clipes 9:16 com gancho, legenda e reframe" },
+  { icon: "trophy", title: "4. POSTE ONDE QUISER", text: "Baixe e publique no TikTok, Reels ou Shorts" },
 ];
 
 const DEMO_CLIPS = [
-  { hook: "TRIPLE KILL!", tc: "00:01 - 00:15" },
-  { hook: "VICTORY!", tc: "00:15 - 00:32" },
-  { hook: "PENTA KILL!", tc: "00:32 - 00:48" },
-  { hook: "WTF?!", tc: "00:48 - 01:02" },
-  { hook: "EPIC WIN!", tc: "01:02 - 01:18" },
+  { hook: "TRIPLE KILL!", tc: "00:01 - 00:15", scene: "arena" },
+  { hook: "VICTORY!", tc: "00:15 - 00:32", scene: "castle" },
+  { hook: "PENTA KILL!", tc: "00:32 - 00:48", scene: "boss" },
+  { hook: "WTF?!", tc: "00:48 - 01:02", scene: "race" },
+  { hook: "EPIC WIN!", tc: "01:02 - 01:18", scene: "peak" },
 ];
 
 const FEATURES = [
   {
-    icon: "🎮",
-    title: "FEITO PRA GAMES",
-    text: "Genéricos tipo OpusClip cortam por transcrição e não entendem gameplay. A Zorothax acha o momento por FUSÃO DE SINAIS (áudio + cena): kill, clutch, fail, reação.",
+    icon: "▣",
+    title: "FEITO PRA GAMEPLAY",
+    text: "Cortadores genéricos dependem demais da fala. A Zorothax procura ação, pico de áudio, troca de cena, reação, kill, clutch e fail.",
   },
   {
-    icon: "👁",
+    icon: "◎",
     title: "A IA VÊ A TELA",
-    text: "Nosso juiz é MULTIMODAL: olha os frames do corte, não só a legenda. Acerta o que é realmente épico — gameplay é visual.",
+    text: "O juiz é multimodal: olha frames do corte, não só a legenda. Gameplay é visual, então a IA precisa ver o que aconteceu.",
   },
   {
-    icon: "⚡",
-    title: "MUITO MAIS BARATO",
-    text: "Você usa SUA própria chave de IA e paga centavos por vídeo, direto. Sem créditos inflados. A assinatura é só da ferramenta.",
+    icon: "✦",
+    title: "SEM CRÉDITOS INFLADOS",
+    text: "Você usa sua própria chave de IA e paga o custo real direto na OpenRouter. A assinatura é só da ferramenta.",
   },
 ];
 
 const USAGE = [
   { n: "1", title: "CRIE SUA CONTA", text: "Cadastro rápido, sem cartão pra testar." },
   { n: "2", title: "CONECTE SUA CHAVE", text: "Cole sua chave da OpenRouter (fica segura, criptografada). Você paga só o uso real da IA." },
-  { n: "3", title: "COLE O LINK E GERE", text: "A Zorothax processa na nuvem e te entrega os melhores cortes, prontos pro TikTok." },
+  { n: "3", title: "ENVIE E GERE", text: "Suba um arquivo ou cole um link. A Zorothax processa na nuvem e entrega os cortes." },
 ];
 
 const FAQ = [
   {
-    q: "É melhor que o OpusClip pra games?",
-    a: "Sim. Eles são genéricos; a Zorothax é focada em gameplay — acha kill/clutch/fail por sinais de áudio e cena, e a IA vê a tela.",
+    q: "Por que a Zorothax é diferente?",
+    a: "Porque é focada em gameplay: acha kill, clutch, fail e reação por sinais de áudio e cena, e a IA vê a tela.",
   },
   {
     q: "Preciso instalar algo?",
-    a: "Não — roda 100% na nuvem, direto no navegador. Você só conecta sua chave e cola o link.",
+    a: "Não. Roda na nuvem, direto no navegador. Você só conecta sua chave e envia o vídeo.",
   },
   {
     q: "Por que usar minha própria chave?",
-    a: "Você paga o custo real da IA (centavos por vídeo), sem créditos inflados. Mais transparente e muito mais barato que os concorrentes.",
+    a: "Você paga o custo real da IA (centavos por vídeo), sem créditos inflados. Mais transparente e previsível.",
   },
   {
     q: "Funciona com qualquer jogo?",
@@ -108,32 +108,34 @@ export default function Home() {
       <main className="wrap">
       {/* badge */}
       <div className="row-center">
-        <div className="badge">✦ NOVO: IA AINDA MAIS PRECISA ✦</div>
+        <div className="badge">✦ IA QUE VÊ O GAMEPLAY ✦</div>
       </div>
 
       {/* hero */}
       <h1 className="hero">
-        Transforme vídeos de games
+        Transforme gameplays
         <br />
-        em <span className="ghost">clips</span> perfeitos
+        em <span className="ghost">clips</span> prontos
+        <br />
+        pra postar
       </h1>
       <p className="sub">
-        Para criadores e canais de games. Corte os melhores momentos, jogadas
-        épicas, wins, fails e momentos engraçados dos seus vídeos de gameplay.
+        Para criadores e canais de games. Gere cortes verticais 9:16 com gancho,
+        legenda karaokê e enquadramento automático.
       </p>
 
       {/* cta */}
       <div className="cta">
         <label className="input">
           <span aria-hidden>🔗</span>
-          <input placeholder="Cole o link do seu vídeo de gameplay aqui..." />
+          <input placeholder="Suba um vídeo ou cole um link no painel..." readOnly />
         </label>
         <Link className="btn" href="/app">
-          GERAR CLIPS →
+          COMEÇAR AGORA →
         </Link>
       </div>
       <p className="supports">
-        Suporta <b>▶ YouTube</b> · <b>♪ TikTok</b> · e muito mais
+        Funciona com <b>upload de vídeo</b> · <b>links públicos</b> · pronto para TikTok, Reels e Shorts
       </p>
 
       {/* como funciona */}
@@ -157,12 +159,11 @@ export default function Home() {
 
       {/* funciona com */}
       <div className="works">
-        <span>▸ FUNCIONA COM:</span>
-        <span className="item">▶ YOUTUBE</span>
+        <span>▸ PRONTO PARA:</span>
         <span className="item">♪ TIKTOK</span>
-        <span className="item">◎ INSTAGRAM</span>
-        <span className="item">f FACEBOOK</span>
-        <span>⋯ E MAIS...</span>
+        <span className="item">◎ REELS</span>
+        <span className="item">▶ SHORTS</span>
+        <span className="item">▣ CLIPES 9:16</span>
       </div>
 
       {/* janela clips gerados */}
@@ -177,7 +178,13 @@ export default function Home() {
         </div>
         <div className="window-body">
           <div>
-            <div className="preview">
+            <div className="preview pixel-preview" aria-hidden>
+              <span className="px-cloud px-cloud-a" />
+              <span className="px-cloud px-cloud-b" />
+              <span className="px-moon" />
+              <span className="px-hills" />
+              <span className="px-ground" />
+              <span className="px-player" />
               <div className="play" />
             </div>
             <div className="timecode">00:00 / 45:21</div>
@@ -187,7 +194,13 @@ export default function Home() {
             <div className="cards">
               {DEMO_CLIPS.map((c) => (
                 <div className="card" key={c.hook}>
-                  <div className="thumb">
+                  <div className={`thumb pixel-thumb scene-${c.scene}`}>
+                    <span className="px-cloud mini-a" />
+                    <span className="px-cloud mini-b" />
+                    <span className="px-hills" />
+                    <span className="px-ground" />
+                    <span className="px-player" />
+                    <span className="px-enemy" />
                     <div className="hook">{c.hook}</div>
                   </div>
                   <div className="tc">{c.tc}</div>
@@ -198,7 +211,7 @@ export default function Home() {
         </div>
       </div>
 
-      {/* por que medusa (foco gamer vs opusclip) */}
+      {/* por que zorothax */}
       <div className="section-tag">
         <div className="badge">POR QUE ZOROTHAX</div>
       </div>
@@ -237,10 +250,10 @@ export default function Home() {
             R$11,90<span>/mês</span>
           </div>
           <ul className="dash-list">
-            <li>✓ Clips ilimitados (você usa sua própria chave de IA)</li>
+            <li>✓ Cortes de gameplay com uso justo</li>
             <li>✓ Sem créditos — custo de IA real, direto na OpenRouter</li>
             <li>✓ Análise viral multimodal + legenda karaokê + reframe automático</li>
-            <li>✓ Processamento no seu PC (rápido e privado)</li>
+            <li>✓ Processamento na nuvem — nada pra instalar</li>
           </ul>
           <Link href="/login" className="btn full">
             COMEÇAR AGORA →
@@ -261,7 +274,7 @@ export default function Home() {
         ))}
       </div>
 
-      <p className="foot">Zorothax · clips de games nível Opus Clip</p>
+      <p className="foot">© 2026 Zorothax. All rights reserved.</p>
       </main>
     </>
   );

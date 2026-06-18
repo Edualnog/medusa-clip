@@ -1,9 +1,9 @@
 {
-  "name": "zorothax-desktop",
+  "name": "medusaclip-desktop",
   "version": "0.1.0",
-  "description": "Zorothax — cortes virais de gameplay, rodando no seu PC",
+  "description": "Medusa Clip — cortes virais de gameplay, rodando no seu PC",
   "main": "main.js",
-  "author": "Zorothax",
+  "author": "Medusa Clip",
   "scripts": {
     "start": "electron .",
     "dist": "electron-builder"
@@ -13,8 +13,8 @@
     "electron-builder": "^25.1.8"
   },
   "build": {
-    "appId": "com.zorothax.app",
-    "productName": "Zorothax",
+    "appId": "com.medusaclip.app",
+    "productName": "Medusa Clip",
     "files": [
       "main.js",
       "preload.js",
