@@ -22,17 +22,25 @@ const LAYOUTS: Record<string, string> = {
   gameplay_only: "Crop central",
 };
 const DUR: Record<string, [number, number, string]> = {
-  auto: [15, 90, "Auto (15–90s) — variado"],
+  auto: [15, 90, "Auto (15–90s)"],
   curto: [10, 40, "Curtos (10–40s)"],
   longo: [60, 180, "Longos (60–180s)"],
 };
 const FACECAM: Record<string, string> = {
-  auto: "Auto-detectar (rosto)",
+  auto: "Auto (rosto)",
   tr: "Topo direita",
   tl: "Topo esquerda",
   br: "Baixo direita",
   bl: "Baixo esquerda",
 };
+const FEATURES = [
+  { icon: "✦", label: "GANCHO IA" },
+  { icon: "🅒🅒", label: "LEGENDA KARAOKÊ" },
+  { icon: "⛶", label: "REENQUADRAR IA" },
+  { icon: "📈", label: "ANÁLISE VIRAL" },
+  { icon: "✍", label: "DESCRIÇÃO IA" },
+  { icon: "🙂", label: "FACECAM AUTO" },
+];
 
 export default function PainelPage() {
   const [url, setUrl] = useState("");
@@ -42,7 +50,6 @@ export default function PainelPage() {
   const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
   const [creating, setCreating] = useState(false);
   const hadActive = useRef(false);
-  // opcoes de estilo do corte
   const [layout, setLayout] = useState("facecam_top_gameplay_bottom");
   const [durPreset, setDurPreset] = useState("auto");
   const [maxClips, setMaxClips] = useState(6);
@@ -117,22 +124,26 @@ export default function PainelPage() {
 
   const recent = [...clipsById.values()]
     .sort((a, b) => b.created_at.localeCompare(a.created_at))
-    .slice(0, 3);
+    .slice(0, 6);
   const active = jobs.find((j) => j.status === "queued" || j.status === "processing");
   const failed = jobs.find((j) => j.status === "error");
 
   return (
-    <div>
-      <div className="painel-head">
-        <div>
-          <h1 className="painel-title">PAINEL DE CLIPS</h1>
-          <p className="painel-sub">Gere os melhores momentos dos seus gameplays.</p>
+    <div className="painel2">
+      {/* top bar */}
+      <div className="top2">
+        <span className="top2-title">INÍCIO</span>
+        <div className="top2-right">
+          <span className="top2-chip" title="Gasto de IA na sua chave OpenRouter">
+            💸 ${stats.costUsd.toFixed(4)}
+          </span>
+          <span className="top2-chip">🎬 {stats.clipsTotal}</span>
         </div>
-        <div className="painel-badge">🎬 {stats.clipsTotal} CLIPS</div>
       </div>
 
-      <form onSubmit={gerar} className="box gen-box">
-        <label className="input">
+      {/* hero: gerar */}
+      <form onSubmit={gerar} className="gen2 box">
+        <label className="gen2-input">
           <span aria-hidden>🔗</span>
           <input
             placeholder="Cole o link do seu vídeo de gameplay aqui..."
@@ -140,14 +151,8 @@ export default function PainelPage() {
             onChange={(e) => setUrl(e.target.value)}
           />
         </label>
-        <button className="btn" type="submit" disabled={creating || url.trim().length < 8}>
-          {creating ? "..." : "GERAR CLIPS →"}
-        </button>
-      </form>
-      <p className="gen-hint">ⓘ Suporta YouTube, TikTok e muito mais — processa na nuvem com a sua chave.</p>
 
-      <div className="box opts-box">
-        <div className="opts-row">
+        <div className="opts-row gen2-opts">
           <label className="opt">
             <span>ESTILO / LAYOUT</span>
             <select value={layout} onChange={(e) => setLayout(e.target.value)}>
@@ -183,10 +188,25 @@ export default function PainelPage() {
             <span>Legenda karaokê</span>
           </label>
         </div>
+
+        <button className="gen2-btn" type="submit" disabled={creating || url.trim().length < 8}>
+          {creating ? "..." : "✦  OBTER CLIPES EM 1 CLIQUE  ✦"}
+        </button>
+        <p className="gen2-hint">ⓘ Suporta YouTube, TikTok e muito mais — processa na nuvem com a sua chave.</p>
+      </form>
+      {msg && <p className={msg.kind === "ok" ? "dash-note" : "msg"} style={{ textAlign: "center" }}>{msg.text}</p>}
+
+      {/* vitrine de features (reais) */}
+      <div className="feat2">
+        {FEATURES.map((f) => (
+          <div className="feat2-item" key={f.label}>
+            <div className="feat2-icon">{f.icon}</div>
+            <div className="feat2-label">{f.label}</div>
+          </div>
+        ))}
       </div>
 
-      {msg && <p className={msg.kind === "ok" ? "dash-note" : "msg"}>{msg.text}</p>}
-
+      {/* job ativo */}
       {active && (
         <div className="box job-active">
           <div className="job-active-top">
@@ -201,6 +221,22 @@ export default function PainelPage() {
       )}
       {failed && !active && <div className="box job-failed">⚠ Último job falhou: {failed.error}</div>}
 
+      {/* clipes */}
+      <div className="painel-section recent-head">
+        <div className="badge">SEUS CLIPES ({stats.clipsTotal})</div>
+        <Link href="/app/biblioteca" className="nav-link recent-all">VER TUDO →</Link>
+      </div>
+      {recent.length === 0 ? (
+        <div className="empty">Nenhum clip ainda — cole um link e gere. 🎮</div>
+      ) : (
+        <div className="clip-grid">
+          {recent.map((c) => (
+            <ClipCard key={c.id} clip={c} />
+          ))}
+        </div>
+      )}
+
+      {/* stats */}
       <div className="box stats-bar">
         <div className="stat">
           <span className="stat-label">VÍDEOS ANALISADOS</span>
@@ -211,25 +247,11 @@ export default function PainelPage() {
           <span className="stat-val">{stats.clipsTotal}</span>
         </div>
         <div className="stat">
-          <span className="stat-label">💸 GASTO DE IA (SUA CHAVE)</span>
+          <span className="stat-label">💸 GASTO DE IA</span>
           <span className="stat-val">${stats.costUsd.toFixed(4)}</span>
           <span className="stat-sub">{stats.totalTokens.toLocaleString("pt-BR")} tokens</span>
         </div>
       </div>
-
-      {recent.length > 0 && (
-        <>
-          <div className="painel-section recent-head">
-            <div className="badge">ÚLTIMOS CLIPES</div>
-            <Link href="/app/biblioteca" className="nav-link recent-all">VER TUDO →</Link>
-          </div>
-          <div className="clip-grid">
-            {recent.map((c) => (
-              <ClipCard key={c.id} clip={c} />
-            ))}
-          </div>
-        </>
-      )}
     </div>
   );
 }
