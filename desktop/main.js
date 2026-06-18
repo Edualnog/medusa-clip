@@ -85,6 +85,37 @@ ipcMain.handle("set-key", (_e, k) => {
 });
 ipcMain.handle("open-folder", (_e, p) => shell.openPath(p || libraryRoot()));
 
+// Valida a chave na OpenRouter (e traz info de credito). NAO gera custo.
+ipcMain.handle("validate-key", async (_e, key) => {
+  key = (key || "").trim();
+  if (key.length < 8) return { valid: false, error: "Cole a sua chave." };
+  try {
+    const r = await fetch("https://openrouter.ai/api/v1/auth/key", {
+      headers: { Authorization: "Bearer " + key },
+    });
+    if (r.status === 200) {
+      const d = ((await r.json()) || {}).data || {};
+      return {
+        valid: true,
+        label: d.label || null,
+        usage: d.usage ?? null,
+        limit: d.limit ?? null,
+        limitRemaining: d.limit_remaining ?? null,
+        freeTier: d.is_free_tier ?? null,
+      };
+    }
+    if (r.status === 401) return { valid: false, error: "Chave inválida ou expirada." };
+    return { valid: false, error: "OpenRouter respondeu " + r.status + "." };
+  } catch (e) {
+    return { valid: false, error: "Sem internet / OpenRouter fora do ar." };
+  }
+});
+
+ipcMain.handle("get-stats", () => {
+  const c = loadConfig();
+  return { totalCost: c.totalCost || 0, totalTokens: c.totalTokens || 0 };
+});
+
 // Lista os cortes ja gerados (varre as subpastas por run + le os manifests).
 ipcMain.handle("list-clips", () => {
   const root = libraryRoot();
@@ -163,8 +194,17 @@ ipcMain.on("generate", (_e, opts) => {
     try {
       const msg = JSON.parse(line);
       if (msg.type === "progress") win.webContents.send("job-progress", msg);
-      else if (msg.type === "done") win.webContents.send("job-done", { ...msg, out });
-      else if (msg.type === "warning") win.webContents.send("job-warning", msg);
+      else if (msg.type === "done") {
+        const c = loadConfig();
+        const cost = msg.cost || {};
+        c.totalCost = (c.totalCost || 0) + (cost.cost_usd || 0);
+        c.totalTokens = (c.totalTokens || 0) + (cost.total_tokens || 0);
+        saveConfig(c);
+        win.webContents.send("job-done", {
+          ...msg, out,
+          totals: { totalCost: c.totalCost, totalTokens: c.totalTokens },
+        });
+      } else if (msg.type === "warning") win.webContents.send("job-warning", msg);
       else if (msg.type === "error") win.webContents.send("job-error", msg);
     } catch {
       /* log do ffmpeg/whisper — ignora */

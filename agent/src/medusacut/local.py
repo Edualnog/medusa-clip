@@ -19,6 +19,20 @@ def _emit(obj: dict) -> None:
     sys.stdout.flush()
 
 
+def _read_cost(out_dir: str) -> dict:
+    """Le o custo (USD/tokens) do manifest do motor pra mostrar no app."""
+    try:
+        with open(os.path.join(out_dir, "manifest.json"), encoding="utf-8") as fh:
+            cost = (json.load(fh) or {}).get("cost") or {}
+        return {
+            "cost_usd": cost.get("cost_usd") or 0.0,
+            "total_tokens": cost.get("total_tokens") or 0,
+            "model": cost.get("judge_model") or cost.get("model"),
+        }
+    except Exception:
+        return {"cost_usd": 0.0, "total_tokens": 0}
+
+
 def run(argv: list[str] | None = None) -> int:
     # Empacotado (PyInstaller): impede que processos-filho (whisper/ctranslate2)
     # re-executem o app inteiro com flags do python.
@@ -77,6 +91,7 @@ def run(argv: list[str] | None = None) -> int:
     _emit({
         "type": "done",
         "out": os.path.abspath(a.out),
+        "cost": _read_cost(a.out),
         "clips": [
             {
                 "file": c.file,

@@ -13,6 +13,7 @@ document.querySelectorAll(".nav").forEach((b) => {
       $("view-" + id).classList.toggle("hidden", id !== v),
     );
     if (v === "biblioteca") loadLibrary();
+    if (v === "apis") { loadStats(); if ($("key").value.trim()) checkKey(); }
   };
 });
 
@@ -43,13 +44,37 @@ $("srcFile").onclick = async () => {
 $("linkInput").oninput = refreshGen;
 $("clips").oninput = (e) => ($("clipsN").textContent = e.target.value);
 
-// ---------- chave ----------
+// ---------- chave + custo ----------
 window.api.getKey().then((k) => { if (k) $("key").value = k; });
+
+async function checkKey() {
+  const key = $("key").value.trim();
+  const el = $("keyStatus");
+  if (!key) { el.textContent = ""; return; }
+  el.style.color = "var(--muted)";
+  el.textContent = "Verificando…";
+  const r = await window.api.validateKey(key);
+  if (r.valid) {
+    el.style.color = "var(--accent)";
+    let extra = "";
+    if (r.limitRemaining != null) extra = " · resta $" + Number(r.limitRemaining).toFixed(2);
+    else if (r.usage != null) extra = " · usado $" + Number(r.usage).toFixed(4);
+    el.textContent = "✓ Chave válida" + (r.freeTier ? " (free tier)" : "") + extra;
+  } else {
+    el.style.color = "#ff8a8a";
+    el.textContent = "✗ " + (r.error || "Chave inválida.");
+  }
+}
 $("saveKey").onclick = async () => {
   await window.api.setKey($("key").value.trim());
-  $("keySaved").textContent = "✓ Chave salva neste PC.";
-  setTimeout(() => ($("keySaved").textContent = ""), 2500);
+  await checkKey();
 };
+
+async function loadStats() {
+  const s = await window.api.getStats();
+  $("costTotal").textContent = "$" + Number(s.totalCost || 0).toFixed(4);
+  $("costTokens").textContent = Number(s.totalTokens || 0).toLocaleString("pt-BR");
+}
 
 // ---------- gerar ----------
 $("gen").onclick = () => {
@@ -102,11 +127,18 @@ window.api.onDone((m) => {
   $("pstate").textContent = "PRONTO";
   let html = "";
   if (lastWarning) html += '<div class="msg warn">⚠ ' + lastWarning + "</div>";
-  html += '<p class="hint" style="margin-top:12px">' + (m.clips || []).length +
-    " corte(s) salvos. Veja na BIBLIOTECA.</p>";
+  const cost = m.cost || {};
+  const cl = (m.clips || []).length;
+  html += '<p class="hint" style="margin-top:12px">' + cl + " corte(s) salvos · custo desta geração: $" +
+    Number(cost.cost_usd || 0).toFixed(4) + " · " + Number(cost.total_tokens || 0).toLocaleString("pt-BR") +
+    " tokens.</p>";
   html += '<div class="row"><button class="btn2" id="goLib">VER NA BIBLIOTECA</button>' +
     '<button class="btn2" id="openOut">ABRIR PASTA</button></div>';
   $("result").innerHTML = html;
+  if (m.totals) {
+    $("costTotal").textContent = "$" + Number(m.totals.totalCost || 0).toFixed(4);
+    $("costTokens").textContent = Number(m.totals.totalTokens || 0).toLocaleString("pt-BR");
+  }
   $("openOut").onclick = () => window.api.openFolder(m.out);
   $("goLib").onclick = () => document.querySelector('.nav[data-view="biblioteca"]').click();
   $("gen").disabled = false;
