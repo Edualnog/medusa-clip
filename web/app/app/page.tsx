@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ClipCard, type Clip } from "./clip-card";
 import { Icon } from "./icons";
+import { createClient } from "@/lib/supabase/client";
 
 type Job = {
   id: string;
@@ -79,8 +80,47 @@ export default function PainelPage() {
   useEffect(() => {
     loadClips();
     loadJobs();
-    const t = setInterval(loadJobs, 4000);
-    return () => clearInterval(t);
+
+    const supabase = createClient();
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+
+    // Realtime: o worker escreve progresso/stage no job e insere os clips ->
+    // a UI reage na hora (sem polling). RLS garante que so vem o do proprio user.
+    supabase.auth.getUser().then(({ data }) => {
+      const uid = data.user?.id;
+      if (!uid) return;
+      channel = supabase
+        .channel("painel")
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "jobs", filter: `user_id=eq.${uid}` },
+          (payload) => {
+            const row = payload.new as Job;
+            if (!row?.id) return;
+            setJobs((prev) => {
+              const i = prev.findIndex((j) => j.id === row.id);
+              if (i === -1) return [row, ...prev];
+              const next = [...prev];
+              next[i] = { ...next[i], ...row };
+              return next;
+            });
+            if (row.status === "done" || row.status === "error") loadClips();
+          },
+        )
+        .on(
+          "postgres_changes",
+          { event: "INSERT", schema: "public", table: "clips", filter: `user_id=eq.${uid}` },
+          () => loadClips(),
+        )
+        .subscribe();
+    });
+
+    // rede de seguranca: se o realtime cair, ainda reconcilia de vez em quando.
+    const t = setInterval(loadJobs, 20000);
+    return () => {
+      clearInterval(t);
+      if (channel) supabase.removeChannel(channel);
+    };
   }, [loadClips, loadJobs]);
 
   async function gerar(e: React.FormEvent) {
