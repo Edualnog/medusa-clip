@@ -12,7 +12,7 @@ legendas karaokê para encontrar e renderizar os melhores momentos.
 O Medusa Clip é um SaaS **local-first**:
 
 - o site público será uma landing page com autenticação e download do aplicativo;
-- o Supabase será usado para contas, autenticação e controle de acesso/assinatura;
+- o Supabase será usado para contas e autenticação (app **gratuito**, sem assinatura);
 - vídeos, transcrição e renderização serão processados localmente pelo app desktop;
 - cada usuário utilizará sua própria chave da OpenRouter para as etapas de IA;
 - não haverá VPS processando ou armazenando os vídeos dos usuários.

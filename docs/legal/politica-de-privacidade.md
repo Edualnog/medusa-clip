@@ -30,9 +30,9 @@ computador. **Nós não recebemos seus vídeos.** Não coletamos telemetria nem 
   de origem.
 
 ## 4. Finalidades e bases legais
-Tratamos dados para autenticar sua conta e operar a assinatura (execução de contrato),
-gerar os cortes solicitados (execução de contrato e seu consentimento ao usar o recurso)
-e cumprir obrigações legais. O envio à OpenRouter ocorre por sua ação ao gerar clipes.
+Tratamos dados para autenticar sua conta (execução de contrato), gerar os cortes
+solicitados (execução de contrato e seu consentimento ao usar o recurso) e cumprir
+obrigações legais. O envio à OpenRouter ocorre por sua ação ao gerar clipes.
 
 ## 5. Compartilhamento (operadores)
 Usamos provedores que atuam como operadores: **Supabase** (conta/autenticação) e, por

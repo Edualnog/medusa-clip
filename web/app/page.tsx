@@ -37,7 +37,7 @@ const DOWNLOADS = [
 const FAQ = [
   {
     question: "MEUS VÍDEOS SÃO ENVIADOS PARA ALGUM SERVIDOR?",
-    answer: "Não. O processamento de vídeo e a biblioteca de clips ficam no seu computador. A conta e a assinatura usam o Supabase, mas seus gameplays não passam por ele.",
+    answer: "Não. O processamento de vídeo e a biblioteca de clips ficam no seu computador. A sua conta usa o Supabase, mas seus gameplays não passam por ele.",
   },
   {
     question: "PRECISO DE INTERNET?",
@@ -205,16 +205,16 @@ export default function Home() {
 
         <section className="section shell-width pricing-section" id="preco">
           <div className="pricing-copy">
-            <SectionTag>PREÇO TRANSPARENTE</SectionTag>
-            <h2>UM PLANO.<br />SEM CRÉDITOS FICTÍCIOS.</h2>
+            <SectionTag>PREÇO</SectionTag>
+            <h2>GRÁTIS.<br />SEM PEGADINHA.</h2>
             <p>
-              A assinatura mantém o aplicativo, as atualizações e o acesso ao motor.
-              O custo dos modelos é pago diretamente na sua chave da OpenRouter.
+              O Medusa Clip é gratuito. Você só paga os modelos de IA direto na sua
+              própria chave da OpenRouter — sem mensalidade, sem créditos, sem margem nossa.
             </p>
           </div>
           <article className="price-card">
-            <span className="price-label">MEDUSA CLIP PRO</span>
-            <div className="price">R$11,90 <span>/ MÊS</span></div>
+            <span className="price-label">MEDUSA CLIP</span>
+            <div className="price">GRÁTIS <span>/ SEMPRE</span></div>
             <ul>
               <li>Processamento local de gameplay</li>
               <li>Análise viral multimodal</li>

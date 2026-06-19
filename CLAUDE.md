@@ -12,20 +12,22 @@ Contexto para o Claude Code. Leia antes de codar.
 **App desktop para criadores de games**: o usuario instala o Medusa Clip, entra na
 conta, conecta a **propria** chave da OpenRouter, escolhe um video local (ou cola um
 link publico) e recebe **cortes verticais 9:16** nivel Opus Clip (ganchos, legenda
-karaoke, enquadramento) — tudo processado **na propria maquina**. Assinatura simples
-(~R$11,90/mes), **sem creditos** — o custo de IA (LLM) e do usuario, pela chave dele.
+karaoke, enquadramento) — tudo processado **na propria maquina**. App **gratuito**
+(sem assinatura), **sem creditos** — o custo de IA (LLM) e do usuario, pela chave dele.
+Estrategia: base enorme de usuarios primeiro, **monetizar de outra forma no futuro**
+(modelo ainda nao definido).
 Privacidade por padrao: **o gameplay nunca sobe pra nuvem**.
 
 ## Arquitetura: app Electron (local) + Supabase (so conta)
 
 Processamento de video (yt-dlp, ffmpeg, whisper, render) e **pesado** e roda **100%
-no computador do usuario**, dentro do app Electron. Supabase serve apenas conta e
-assinatura — videos e clipes ficam no disco do usuario.
+no computador do usuario**, dentro do app Electron. Supabase serve apenas conta/auth —
+videos e clipes ficam no disco do usuario.
 
 ```
 DESKTOP (Electron @ PC do usuario)        SUPABASE (so conta)
   renderer/  UI 8-bit (3 views)             auth (login)
-  main.js    spawn do motor (binario)       assinatura / billing
+  main.js    spawn do motor (binario)       (sem billing — app gratis)
   engine/    medusacut-engine + ffmpeg      (NENHUM video sobe pra ca)
              + ffprobe (embutidos)
   config.json (userData): chave OpenRouter local
@@ -40,7 +42,7 @@ WEB (Next.js @ Vercel)
   `ffmpeg`/`ffprobe` vivem em `desktop/engine/` e entram no PATH do subprocesso —
   self-contained, sem dep do sistema nem Python instalado.
 - **Web (Vercel)**: so a landing + downloads + login. Sem worker, sem fila de jobs.
-- **Supabase**: auth + assinatura. **Nao** guarda video/clipe.
+- **Supabase**: auth/conta. **Nao** guarda video/clipe. **Sem billing** (app gratis).
 - **Custo de compute e do USUARIO** (CPU/banda/disco dele). O dono so paga site + auth.
 
 ## Regras inegociaveis (seguranca + modelo)
@@ -51,7 +53,8 @@ WEB (Next.js @ Vercel)
   por servidor nosso.
 - **Local-first**: video bruto e clipes **nunca** saem do PC do usuario. Nada de
   upload de gameplay pra Supabase/nuvem.
-- **Sem creditos**: cobranca por assinatura; custo de IA e do usuario.
+- **App gratuito**: sem assinatura, sem creditos. Custo de IA e do usuario (BYO key).
+  Monetizacao futura ainda nao definida — nao assumir/implementar cobranca.
 - Segredos de servidor (se houver, p/ billing): **so no servidor** (env Vercel),
   nunca `NEXT_PUBLIC`, nunca no git.
 
@@ -80,8 +83,7 @@ docs/     # SETUP.md
 ```
 
 > Supabase: **so auth** (`auth.users` nativo) — **sem schema custom** no repo. Login
-> usa email/senha pelo painel; nada de tabelas/migrations. Assinatura, quando existir,
-> ganha schema proprio.
+> usa email/senha pelo painel; nada de tabelas/migrations. App gratuito — sem billing.
 >
 > Backend minimo na web: rota privilegiada `web/app/api/account/delete` (runtime
 > nodejs) usa a **`SUPABASE_SERVICE_ROLE_KEY`** (server-only, env da Vercel / `.env.local`)
@@ -130,7 +132,7 @@ dono passo a passo** no deploy (ver `docs/SETUP.md`).
 - [x] Build do instalador `.dmg` (electron-builder, sem assinatura).
 - [x] Landing 8-bit refocada no app desktop (downloads "em breve" por plataforma).
 - [x] Login no app desktop: email/senha via Supabase (auth no `main.js`, sessao
-      local em config.json, gate de tela de login). Sem assinatura ainda.
+      local em config.json, gate de tela de login).
 - [x] Onboarding de 1o acesso: aceites (Termos, Privacidade, responsabilidade de
       conteudo, 18+) + escolha da pasta dos clips. Textos legais em
       `desktop/renderer/legal.js` (espelho em `docs/legal/`). `LEGAL_VERSION` no `main.js`.
@@ -142,7 +144,7 @@ dono passo a passo** no deploy (ver `docs/SETUP.md`).
       revisao juridica dos textos legais; rotacao dos segredos cloud antigos (R2/service_role).
 - [ ] Liberar instaladores assinados por plataforma (mac/win/linux — target Linux
       AppImage ja configurado no electron-builder).
-- [ ] Assinatura (Stripe/Mercado Pago) + checagem de plano ligada ao login.
+- [ ] Monetizacao futura (modelo a definir) — **NAO** ha assinatura/cobranca; app gratis.
 - [ ] Deploy completo (Vercel + distribuicao dos builds) e onboarding.
 
 ## Comandos

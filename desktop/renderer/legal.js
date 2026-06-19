@@ -31,10 +31,10 @@ window.LEGAL = {
     intermedeia nem adiciona margem sobre esse consumo. Você é responsável pela guarda e
     pelo uso da sua chave e pelos custos gerados.</p>
 
-    <h3>5. Assinatura</h3>
-    <p>O acesso ao Aplicativo pode depender de assinatura. Valores, ciclo de cobrança e
-    condições de cancelamento serão informados no momento da contratação. (Funcionalidade
-    de assinatura em implantação.)</p>
+    <h3>5. Preço</h3>
+    <p>O Aplicativo é <strong>gratuito</strong>. Não há assinatura, mensalidade nem
+    créditos. Você arca apenas com o custo dos modelos de IA, cobrado diretamente pela
+    OpenRouter na sua chave (cláusula 4).</p>
 
     <h3>6. Responsabilidade pelo conteúdo e direitos autorais</h3>
     <p>Você é o único responsável pelos vídeos que processa. Ao usar o Aplicativo, você
@@ -116,9 +116,9 @@ window.LEGAL = {
     </ul>
 
     <h3>4. Finalidades e bases legais</h3>
-    <p>Tratamos dados para autenticar sua conta e operar a assinatura (execução de
-    contrato), gerar os cortes solicitados (execução de contrato e seu consentimento ao
-    usar o recurso) e cumprir obrigações legais. O envio à OpenRouter ocorre por sua
+    <p>Tratamos dados para autenticar sua conta (execução de contrato), gerar os cortes
+    solicitados (execução de contrato e seu consentimento ao usar o recurso) e cumprir
+    obrigações legais. O envio à OpenRouter ocorre por sua
     ação ao gerar clipes.</p>
 
     <h3>5. Compartilhamento (operadores)</h3>

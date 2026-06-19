@@ -24,9 +24,10 @@ A análise por IA usa **a sua própria chave da OpenRouter**. O custo dos modelo
 diretamente pela OpenRouter na sua conta — o Medusa Clip não intermedeia nem adiciona
 margem. Você é responsável pela guarda e pelo uso da sua chave e pelos custos gerados.
 
-## 5. Assinatura
-O acesso ao Aplicativo pode depender de assinatura. Valores, ciclo de cobrança e
-condições de cancelamento serão informados na contratação. (Em implantação.)
+## 5. Preço
+O Aplicativo é **gratuito**. Não há assinatura, mensalidade nem créditos. Você arca
+apenas com o custo dos modelos de IA, cobrado diretamente pela OpenRouter na sua chave
+(cláusula 4).
 
 ## 6. Responsabilidade pelo conteúdo e direitos autorais
 Você é o único responsável pelos vídeos que processa. Você declara que **possui os
