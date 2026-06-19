@@ -714,6 +714,41 @@ a {
   outline: none;
 }
 
+/* campo de senha com olhinho (mostrar/ocultar) */
+.pass-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.pass-row input {
+  padding-right: 52px;
+}
+.pass-eye {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 6px;
+}
+.pass-eye:hover {
+  color: var(--fg);
+}
+.pass-eye.showing {
+  color: var(--accent);
+}
+.pass-eye svg {
+  width: 24px;
+  height: 24px;
+  display: block;
+}
+
 .btn.full {
   width: 100%;
   margin-top: 8px;

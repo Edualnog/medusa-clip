@@ -585,6 +585,18 @@ $("signOut").addEventListener("click", async () => {
   showGate();
 });
 
+// Olhinho de mostrar/ocultar senha (qualquer campo dentro de .pass-row)
+document.querySelectorAll(".pass-eye").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const input = btn.parentElement.querySelector("input");
+    if (!input) return;
+    const reveal = input.type === "password";
+    input.type = reveal ? "text" : "password";
+    btn.classList.toggle("showing", reveal);
+    btn.setAttribute("aria-label", reveal ? "Ocultar senha" : "Mostrar senha");
+  });
+});
+
 (async function initAuth() {
   const session = await window.api.getSession();
   if (session && session.email) showApp(session.email);

@@ -29,7 +29,12 @@
         </label>
         <label class="field">
           <span>SENHA</span>
-          <input id="authPassword" type="password" required minlength="6" autocomplete="current-password" placeholder="••••••••" />
+          <div class="pass-row">
+            <input id="authPassword" type="password" required minlength="6" autocomplete="current-password" placeholder="••••••••" />
+            <button type="button" class="pass-eye" aria-label="Mostrar senha">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
         </label>
         <p class="auth-msg hidden" id="authMsg"></p>
         <button class="primary-button full-button" id="authSubmit" type="submit">ENTRAR →</button>

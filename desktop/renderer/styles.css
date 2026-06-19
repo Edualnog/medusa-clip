@@ -602,6 +602,27 @@ button:focus-visible, input:focus-visible, select:focus-visible {
   font-size: 16px;
   text-decoration: underline;
 }
+/* campo de senha com olhinho (mostrar/ocultar) */
+.pass-row { position: relative; display: flex; align-items: center; }
+.pass-row input { flex: 1; padding-right: 46px; }
+.pass-eye {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 6px;
+}
+.pass-eye:hover { color: var(--fg); }
+.pass-eye.showing { color: var(--accent); }
+.pass-eye svg { width: 22px; height: 22px; display: block; }
+
 .auth-forgot-row { margin: 0; text-align: center; }
 .auth-link {
   border: 0;

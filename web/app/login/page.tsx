@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { MedusaLogo } from "../medusa-logo";
+import { PasswordInput } from "../password-input";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -65,8 +66,7 @@ export default function LoginPage() {
           </label>
           <label className="field">
             <span>SENHA</span>
-            <input
-              type="password"
+            <PasswordInput
               required
               minLength={6}
               value={password}

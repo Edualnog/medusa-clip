@@ -9,6 +9,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { MedusaLogo } from "../medusa-logo";
+import { PasswordInput } from "../password-input";
 
 export default function RedefinirSenhaPage() {
   const [hasSession, setHasSession] = useState<boolean | null>(null);
@@ -74,8 +75,7 @@ export default function RedefinirSenhaPage() {
             <form onSubmit={submit}>
               <label className="field">
                 <span>NOVA SENHA</span>
-                <input
-                  type="password"
+                <PasswordInput
                   required
                   minLength={6}
                   value={password}
@@ -85,8 +85,7 @@ export default function RedefinirSenhaPage() {
               </label>
               <label className="field">
                 <span>CONFIRMAR SENHA</span>
-                <input
-                  type="password"
+                <PasswordInput
                   required
                   minLength={6}
                   value={confirm}
