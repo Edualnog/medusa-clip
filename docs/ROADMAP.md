@@ -137,9 +137,12 @@ Objetivo: publicar versões sem processo manual frágil.
 - configurar atualização automática por canal estável e beta;
 - implementar rollback para uma versão anterior.
 
-Recomendação: não usar releases de um repositório privado como URL direta no app,
-pois isso exigiria distribuir um token do GitHub. Usar armazenamento próprio com
-feed HTTPS assinado é mais seguro.
+Resolvido (2026-06-20): o repo `Edualnog/medusa-cut` é **público** (source-available),
+então as releases do GitHub são URL direta no app **sem distribuir token nenhum** — o
+electron-updater lê o feed público. Isso dispensa o armazenamento próprio / feed assinado
+que esta etapa previa. (Obs.: o restante das Etapas 5–6 abaixo é do desenho cloud/SaaS
+ANTIGO — Supabase como storage de release, entitlement, pagamentos — abandonado no pivot
+local-first/app grátis; mantido só como histórico.)
 
 ## Etapa 6 — Pagamentos e operação
 
