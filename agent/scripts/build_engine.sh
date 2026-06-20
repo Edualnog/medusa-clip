@@ -21,19 +21,27 @@ PYTHON="${PYTHON:-python3.11}"
 command -v "$PYTHON" >/dev/null || PYTHON=python3
 VENV="${VENV:-.buildvenv}"
 "$PYTHON" -m venv "$VENV"
-"$VENV/bin/pip" install --upgrade pip >/dev/null
-"$VENV/bin/pip" install . pyinstaller
 
-cat > /tmp/medusacut_entry.py <<'PY'
+# Layout do venv difere por SO: Windows usa Scripts/python.exe; Unix usa bin/python.
+# Chamamos tudo via "python -m pip" / "python -m PyInstaller" pra não depender de
+# qual diretório/entrypoint existe.
+PYBIN="$VENV/bin/python"
+[ -f "$VENV/Scripts/python.exe" ] && PYBIN="$VENV/Scripts/python.exe"
+
+"$PYBIN" -m pip install --upgrade pip >/dev/null
+"$PYBIN" -m pip install . pyinstaller
+
+ENTRY="$(mktemp -t medusacut_entry_XXXX.py)"
+cat > "$ENTRY" <<'PY'
 import sys
 from medusacut.local import run
 sys.exit(run())
 PY
 
-"$VENV/bin/pyinstaller" --noconfirm --onedir --name medusacut-engine \
+"$PYBIN" -m PyInstaller --noconfirm --onedir --name medusacut-engine \
   --collect-all faster_whisper --collect-all ctranslate2 --collect-all onnxruntime \
   --collect-all cv2 --collect-all av --collect-all yt_dlp --collect-all tokenizers \
   --collect-all huggingface_hub --collect-submodules medusacut \
-  /tmp/medusacut_entry.py
+  "$ENTRY"
 
 echo "OK -> dist/medusacut-engine/"
