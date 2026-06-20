@@ -229,7 +229,7 @@ def render_candidates(
         prepared, usage = _prepare_candidates(
             media, candidates, audio_path, game_context,
             score_virality=score_virality, final_count=keep, cache_dir=cache_dir,
-            min_len=min_len, max_len=max_len, video_dur=media.duration,
+            min_len=min_len, max_len=max_len, video_dur=media.duration, cuts=cuts,
             progress=_band(progress, 0.0, 0.5),
         )
         render_progress = _band(progress, 0.5, 1.0)
@@ -283,7 +283,7 @@ SIGNAL_W = 0.35
 
 def _prepare_candidates(
     media, candidates, audio_path, game_context, *, score_virality, final_count, cache_dir,
-    min_len=None, max_len=None, video_dur=None, progress=None
+    min_len=None, max_len=None, video_dur=None, cuts=None, progress=None
 ):
     """Transcreve + (se pedido) pontua viralizacao em DUAS etapas e ranqueia.
 
@@ -341,8 +341,13 @@ def _prepare_candidates(
             kf_dir = os.path.join(cache_dir, f"kf_{int(cand.start * 1000)}")
             n_kf = max(KEYFRAMES, min(8, round((cand.end - cand.start) / 25)))
             imgs = frames.extract_keyframes(media.path, cand.start, cand.end, n=n_kf, out_dir=kf_dir)
+            ts_text = whisper.transcript_timestamped(words)
+            win_cuts = [c for c in (cuts or []) if cand.start < c < cand.end]
             hook = hooks.judge_candidate(
-                cand, text, imgs, game_context, min_len=min_len, max_len=max_len
+                ts_text, imgs, game_context,
+                win_start=cand.start, win_end=cand.end,
+                anchor_s=(cand.start + cand.end) / 2.0,
+                scene_cuts=win_cuts, min_len=min_len, max_len=max_len,
             )
             if hook.usage is not None:
                 usage_total = hook.usage if usage_total is None else usage_total + hook.usage
