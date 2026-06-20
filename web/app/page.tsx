@@ -27,10 +27,10 @@ const STEPS = [
   { number: "4", title: "PUBLIQUE", text: "Receba clips 9:16 com título, legenda karaokê e reframe automático." },
 ];
 
-// Repo PÚBLICO que hospeda só os instaladores (o código-fonte é privado). Os links
-// apontam pra release `latest`, e os nomes de asset são fixos (artifactName no
+// Repo PÚBLICO (source-available) que hospeda código + releases. Os links apontam
+// pra release `latest`, e os nomes de asset são fixos (artifactName no
 // electron-builder do desktop).
-const RELEASE_REPO = "Edualnog/medusa-clip-releases";
+const RELEASE_REPO = "Edualnog/medusa-cut";
 const releaseUrl = (asset: string) =>
   `https://github.com/${RELEASE_REPO}/releases/latest/download/${asset}`;
 const RELEASES_READY = !RELEASE_REPO.includes("PLACEHOLDER");

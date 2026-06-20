@@ -7,6 +7,18 @@ O processamento pesado acontece no computador do usuário. O motor combina sinai
 de áudio e movimento, transcrição, análise multimodal, enquadramento automático e
 legendas karaokê para encontrar e renderizar os melhores momentos.
 
+## Licença e direitos (source-available)
+
+Este repositório é **source-available**, não open source. O código fica público
+por **transparência e auditoria de segurança** — coerente com a proposta
+local-first e de privacidade do app: qualquer pessoa pode ler e confirmar que o
+gameplay do usuário nunca sai da própria máquina.
+
+Isso **não** concede licença de uso. Todos os direitos reservados: é proibido
+usar, copiar, modificar, redistribuir ou criar produtos derivados/concorrentes a
+partir deste código sem autorização escrita. Veja [`LICENSE`](LICENSE) para os
+termos completos. Use o app pelos instaladores oficiais em medusaclip.com.
+
 ## Direção do produto
 
 O Medusa Clip é um SaaS **local-first**:

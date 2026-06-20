@@ -271,7 +271,7 @@ function createWindow() {
 // macOS NAO assinado nao consegue trocar o proprio binario (Squirrel.Mac exige
 // assinatura/notarizacao): nesse caso so checamos a ultima release e mandamos o
 // usuario baixar no site (evento update-site). Trocar pelo fluxo nativo ao assinar.
-const GITHUB_REPO = "Edualnog/medusa-clip-releases"; // repo PUBLICO so de binarios (fonte e privado)
+const GITHUB_REPO = "Edualnog/medusa-cut"; // mesmo repo publico (source-available); releases vivem aqui
 const DOWNLOAD_PAGE = process.env.MEDUSA_DOWNLOAD_PAGE || "https://medusaclip.com/#download";
 
 function sendToWin(channel, payload) {

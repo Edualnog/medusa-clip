@@ -1,6 +1,6 @@
 {
   "name": "medusaclip-desktop",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "Medusa Clip — cortes virais de gameplay, rodando no seu PC",
   "main": "main.js",
   "author": "Medusa Clip",
@@ -12,7 +12,7 @@
     "electron": "^33.4.11",
     "electron-builder": "^25.1.8"
   },
-  "//publish": "Releases vao pro repo PUBLICO medusa-clip-releases (so binarios); o fonte fica privado. electron-updater le este bloco pra achar o feed. Ver docs/SETUP.md.",
+  "//publish": "Releases sao publicadas NESTE mesmo repo publico (medusa-cut, source-available). electron-updater le este bloco pra achar o feed. Ver docs/SETUP.md.",
   "build": {
     "appId": "com.medusaclip.app",
     "productName": "Medusa Clip",
@@ -21,7 +21,7 @@
       {
         "provider": "github",
         "owner": "Edualnog",
-        "repo": "medusa-clip-releases"
+        "repo": "medusa-cut"
       }
     ],
     "files": [

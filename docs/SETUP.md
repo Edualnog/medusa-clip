@@ -102,24 +102,21 @@ vai pro Storage.
 > notarização entram quando houver conta Apple Developer — aí o auto-update do Mac
 > liga 100%.
 
-### Arquitetura: fonte PRIVADO + repo PÚBLICO só de binários
-- Código-fonte: `Edualnog/medusa-cut` (**privado** — não vira open source).
-- Instaladores + feed de update: `Edualnog/medusa-clip-releases` (**público**, só binários).
-- Os 3 lugares já apontam pra lá: `desktop/package.json` (`build.publish`),
+### Arquitetura: um único repo PÚBLICO source-available (código + releases)
+- Código-fonte **e** releases: `Edualnog/medusa-cut` (**público**, source-available —
+  visível pra auditoria, sem licença de uso; ver `LICENSE`).
+- Os 3 lugares apontam pra cá: `desktop/package.json` (`build.publish`),
   `desktop/main.js` (`GITHUB_REPO`), `web/app/page.tsx` (`RELEASE_REPO`).
 
-### 1. Único pré-requisito manual: o token de publicação
-- Criar um **PAT** (https://github.com/settings/tokens) com escopo `repo` (acesso a
-  `medusa-clip-releases`) e salvar como **secret `RELEASES_TOKEN`** no repo privado
-  (Settings → Secrets and variables → Actions → New repository secret).
-- Por quê: o CI roda no repo privado mas publica no **público** — o `GITHUB_TOKEN`
-  padrão só publica no próprio repo, então precisa do PAT pra cruzar.
+### 1. Sem pré-requisito de token
+- A release sai **neste mesmo repo** via `GITHUB_TOKEN` nativo (o job `release` tem
+  `permissions: contents: write`). **Não** precisa de PAT nem do secret `RELEASES_TOKEN`.
 
 ### 2. Publicar uma versão
-- Subir `desktop/package.json` `version` (ex.: `0.1.1`) — é a **fonte da verdade** do updater.
-- `git tag v0.1.1 && git push --tags` → o workflow `.github/workflows/release.yml` builda
+- Subir `desktop/package.json` `version` (ex.: `0.1.8`) — é a **fonte da verdade** do updater.
+- `git tag v0.1.8 && git push --tags` → o workflow `.github/workflows/release.yml` builda
   **macOS Apple Silicon (arm64)**, **Windows (x64)** e **Linux (x86_64)** nativamente e
-  publica os instaladores + os feeds (`latest*.yml`) na Release de `medusa-clip-releases`.
+  publica os instaladores + os feeds (`latest*.yml`) na Release deste repo.
   (macOS Intel foi descontinuado a pedido do dono — só Apple Silicon.)
 
 ### 3. Como o usuário atualiza

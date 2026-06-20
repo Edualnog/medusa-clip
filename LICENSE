@@ -1,0 +1,35 @@
+Medusa Clip — Source-Available License
+Copyright (c) 2026 Medusa Clip. All rights reserved.
+
+This source code is made publicly available for the sole purposes of
+TRANSPARENCY and SECURITY REVIEW. Publishing it here does NOT make it
+open source and does NOT grant any license to use it.
+
+You MAY:
+  - View, read, and audit this source code.
+  - Reference small excerpts for the purpose of reporting a security
+    issue or discussing the project (fair-use style quotation).
+
+You MAY NOT, without prior written permission from the copyright holder:
+  - Use, run, compile, or deploy this software or any part of it, except
+    by running official builds distributed by Medusa Clip.
+  - Copy, modify, translate, or create derivative works from this code.
+  - Redistribute, sublicense, sell, or host this code or builds derived
+    from it.
+  - Use this code, in whole or in part, to build, train, or operate a
+    competing or similar product or service.
+
+The names "Medusa Clip", "medusaclip.com", and associated logos are not
+licensed for any use.
+
+Third-party components bundled with official builds (e.g. ffmpeg, Python
+libraries) remain under their own respective licenses.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE
+OR OTHER DEALINGS IN THE SOFTWARE.
+
+For licensing inquiries, contact the copyright holder.
