@@ -162,6 +162,17 @@ def render_candidates(
     cache_dir = os.path.join(out_dir, ".cache")
     layout_name = _resolve_layout(layout, facecam_corner, facecam_auto)
 
+    # Reframe CIENTE DE CENA (default no caminho AUTO): escolhe o layout por trecho,
+    # em vez de um fixo + box GLOBAL (que virava parede/borrao no topo em video editado).
+    import os as _os
+
+    use_vlm = bool(_os.environ.get("LLM_API_KEY"))
+    scene_aware = (
+        layout_name in ("facecam_top_gameplay_bottom", "dynamic_gameplay")
+        and facecam_auto
+        and facecam_box is None
+    )
+
     # Cortes de cena (uma vez): o enquadramento dinamico salta neles em vez de varrer.
     cuts = None
     if layout_name in ("dynamic_gameplay", "facecam_top_gameplay_bottom"):
@@ -169,9 +180,15 @@ def render_candidates(
 
         cuts = scene.detect_cuts(media.path)
 
-    # Auto-deteccao do facecam (frente C): so no layout facecam, se pedido e sem box manual.
-    facecam_info = None
-    if layout_name == "facecam_top_gameplay_bottom" and facecam_auto and facecam_box is None:
+    # Auto-deteccao GLOBAL do facecam: so no caminho NAO-scene-aware (manual/legado). No
+    # scene-aware, a composicao e classificada POR CENA (composition.classify_segment).
+    facecam_info = {"mode": "scene_aware", "vlm": use_vlm} if scene_aware else None
+    if (
+        not scene_aware
+        and layout_name == "facecam_top_gameplay_bottom"
+        and facecam_auto
+        and facecam_box is None
+    ):
         import sys
 
         from medusacut.reframe import facecam as facecam_mod
@@ -228,7 +245,8 @@ def render_candidates(
         file_name = f"clip_{i:02d}.mp4"
         out_path = os.path.join(out_dir, file_name)
         _render_layout(media, cand, layout_name, facecam_corner, out_path, cache_dir,
-                       facecam_box=facecam_box, facecam_h=facecam_h, cuts=cuts)
+                       facecam_box=facecam_box, facecam_h=facecam_h, cuts=cuts,
+                       scene_aware=scene_aware, use_vlm=use_vlm)
         if captions and words:
             _burn_captions(out_path, words, cand, cache_dir, caption_y)
         clips.append(
@@ -433,10 +451,22 @@ def _render_layout(
     facecam_box: tuple[float, float, float, float] | None = None,
     facecam_h: int = 640,
     cuts: list[float] | None = None,
+    scene_aware: bool = False,
+    use_vlm: bool = True,
 ) -> None:
     """Despacha o render conforme o layout resolvido."""
     from medusacut.reframe import compose, layouts
     from medusacut.render import ffmpeg as render
+
+    if scene_aware:
+        # Layout decidido POR CENA (gameplay+cam / reacao fullscreen / gameplay puro).
+        from medusacut.reframe import scene_layout
+
+        scene_layout.render_scene_aware(
+            media, candidate, out_path=out_path, cache_dir=cache_dir, cuts=cuts,
+            facecam_corner=facecam_corner, facecam_h=facecam_h, use_vlm=use_vlm,
+        )
+        return
 
     if layout_name == "facecam_top_gameplay_bottom":
         compose.render_facecam_layout(

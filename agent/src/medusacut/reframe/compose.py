@@ -88,6 +88,36 @@ def render_facecam_layout(
     return out_path
 
 
+def render_face_fullscreen(
+    media: Media,
+    candidate: Candidate,
+    *,
+    out_path: str,
+    face_box: tuple[float, float, float, float] | None = None,
+) -> str:
+    """Rosto em TELA CHEIA 9:16 (reacao/camera fechada): recorta uma coluna 9:16 da
+    altura toda, centrada no rosto, e escala. Sem split, sem blur — o rosto e o
+    conteudo. `face_box` (x0,y0,x1,y1 normalizado) centra o crop; sem ela, centro."""
+    iw, ih = int(media.width), int(media.height)
+    crop_w = min(iw, int(round(ih * TARGET_W / TARGET_H)))  # 9:16 da altura cheia
+    cx = 0.5 if not face_box else (face_box[0] + face_box[2]) / 2.0
+    x = int(round(cx * iw - crop_w / 2))
+    x = max(0, min(iw - crop_w, x))
+    filtergraph = f"[0:v]crop={crop_w}:{ih}:{x}:0,scale={TARGET_W}:{TARGET_H}[outv]"
+    dur = max(0.0, candidate.end - candidate.start)
+    cmd = [
+        "ffmpeg", "-y",
+        "-ss", f"{candidate.start:.3f}", "-t", f"{dur:.3f}", "-i", media.path,
+        "-filter_complex", filtergraph,
+        "-map", "[outv]", "-map", "0:a?",
+        "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
+        "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "160k",
+        "-movflags", "+faststart", out_path,
+    ]
+    _run(cmd, out_path)
+    return out_path
+
+
 def render_blur_fit(media: Media, candidate: Candidate, *, out_path: str) -> str:
     """Gameplay inteiro (sem crop) encaixado sobre fundo desfocado."""
     filtergraph = (
