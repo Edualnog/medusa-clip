@@ -249,6 +249,19 @@ function createWindow() {
     },
   });
   win.loadFile(path.join(__dirname, "renderer", "index.html"));
+
+  // Endurecimento: nada navega DENTRO da janela Electron. Links externos abrem no
+  // navegador do sistema; window.open/target=_blank são negados.
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    if (/^https?:\/\//i.test(url)) shell.openExternal(url);
+    return { action: "deny" };
+  });
+  win.webContents.on("will-navigate", (e, url) => {
+    if (url !== win.webContents.getURL()) {
+      e.preventDefault();
+      if (/^https?:\/\//i.test(url)) shell.openExternal(url);
+    }
+  });
 }
 
 // --- Auto-update (electron-updater). Fluxo "avisar antes de baixar":
@@ -329,7 +342,13 @@ app.whenReady().then(() => {
   migrateConfig(); // safeStorage so fica disponivel apos o ready
   // zclip://abs/<caminho-do-arquivo> -> serve o arquivo de video local
   protocol.handle("zclip", (request) => {
-    const p = decodeURIComponent(request.url.replace(/^zclip:\/\//, ""));
+    const p = path.normalize(decodeURIComponent(request.url.replace(/^zclip:\/\//, "")));
+    // Defesa em profundidade: só serve arquivos DENTRO da pasta de clips do usuário,
+    // pra um eventual XSS no renderer não conseguir ler arquivo arbitrário do disco.
+    const root = path.normalize(libraryRoot());
+    if (p !== root && !p.startsWith(root + path.sep)) {
+      return new Response("forbidden", { status: 403 });
+    }
     return net.fetch(pathToFileURL(p).toString());
   });
   createWindow();
@@ -712,6 +731,24 @@ ipcMain.handle("list-clips", () => {
 
 ipcMain.on("generate", (_e, opts) => {
   if (child) return;
+
+  // Valida a fonte ANTES de chamar o motor: aceita só arquivo local existente OU link
+  // do YouTube. Bloqueia file://, URLs internas/aleatórias e outros esquemas que o
+  // yt-dlp tentaria abrir (evita SSRF / leitura de caminho inesperado).
+  const src = String((opts && opts.source) || "").trim();
+  let validSource = false;
+  try {
+    validSource = fs.existsSync(src) || isYoutubeUrl(src);
+  } catch {
+    validSource = false;
+  }
+  if (!validSource) {
+    win.webContents.send("job-error", {
+      message: "Fonte inválida: escolha um arquivo de vídeo local ou cole um link público do YouTube.",
+    });
+    return;
+  }
+
   const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
   const out = path.join(libraryRoot(), stamp);
   fs.mkdirSync(out, { recursive: true });
