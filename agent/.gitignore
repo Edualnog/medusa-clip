@@ -1,4 +1,8 @@
 
+# venvs
+.venv/
+.venv311/
+
 # build do app desktop
 .buildvenv/
 dist/
