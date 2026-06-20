@@ -24,6 +24,10 @@ Progress = Callable[[float, str], None]
 # (o LLM escolhe os melhores dentre eles).
 OVERSELECT_FACTOR = 3
 
+# Piso absoluto de duracao do corte qdo nenhum min_len e pedido na CLI — a faixa por
+# TIPO de momento (hooks.moments) e quem manda; isto so evita corte degenerado.
+HARD_FLOOR = 10.0
+
 
 def generate_clips(
     url: str,
@@ -268,29 +272,45 @@ def render_candidates(
         render_progress = progress
 
     total = len(prepared)
-    clips: list[Clip] = []
-    for i, (cand, hook, words) in enumerate(prepared, start=1):
-        _report(render_progress, (i - 1) / total if total else 1.0, f"Renderizando corte {i}/{total}…")
-        file_name = f"clip_{i:02d}.mp4"
+
+    def _render_one(idx: int, cand, hook, words) -> Clip:
+        """Renderiza 1 corte (layout + legenda) -> Clip. Independente por corte:
+        nomes de arquivo/cache derivam de `clip_NN`, sem colisao entre threads."""
+        file_name = f"clip_{idx:02d}.mp4"
         out_path = os.path.join(out_dir, file_name)
         _render_layout(media, cand, layout_name, facecam_corner, out_path, cache_dir,
                        facecam_box=facecam_box, facecam_h=facecam_h, cuts=cuts,
                        scene_aware=scene_aware, use_vlm=use_vlm)
         if captions and words:
             _burn_captions(out_path, words, cand, cache_dir, caption_y)
-        clips.append(
-            Clip(
-                index=i,
-                start=cand.start,
-                end=cand.end,
-                score=cand.score,
-                file=file_name,
-                hook=hook.hook if hook else "",
-                reason=hook.reason if hook else "",
-                virality_score=hook.virality_score if hook else None,
-                description=hook.description if hook else "",
-            )
+        return Clip(
+            index=idx, start=cand.start, end=cand.end, score=cand.score, file=file_name,
+            hook=hook.hook if hook else "",
+            reason=hook.reason if hook else "",
+            virality_score=hook.virality_score if hook else None,
+            description=hook.description if hook else "",
+            moment_type=hook.moment_type if hook else "",
         )
+
+    # Render dos cortes EM PARALELO: cada ffmpeg ja usa varias threads, entao alguns
+    # cortes concorrentes ganham tempo sem trade de qualidade. Ordem preservada na saida.
+    clips: list[Clip] = []
+    if total:
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+
+        workers = _render_workers(total)
+        _report(render_progress, 0.0, f"Renderizando {total} corte(s) ({workers}x)…")
+        results: dict[int, Clip] = {}
+        with ThreadPoolExecutor(max_workers=workers) as ex:
+            futs = [
+                ex.submit(_render_one, i, cand, hook, words)
+                for i, (cand, hook, words) in enumerate(prepared, start=1)
+            ]
+            for fut in as_completed(futs):
+                clip = fut.result()
+                results[clip.index] = clip
+                _report(render_progress, len(results) / total, f"Renderizado {len(results)}/{total}…")
+        clips = [results[i] for i in sorted(results)]
 
     _write_manifest(out_dir, url=url, layout=layout_name, clips=clips, usage=usage, facecam=facecam_info)
     _report(render_progress, 1.0, "Pronto")
@@ -362,34 +382,57 @@ def _prepare_candidates(
 
     # etapa 2: juiz forte multimodal (ve keyframes)
     from medusacut import frames
-    from medusacut.signals.fusion import MIN_LEN
+    from medusacut.hooks.moments import moment_bounds
+    from medusacut.signals.fusion import MAX_LEN
 
-    floor = min_len if min_len is not None else MIN_LEN
+    # envelope global por cima da faixa do TIPO: min_len pedido sobe o piso, max_len/
+    # MAX_LEN baixa o teto. Sem min_len, o piso e HARD_FLOOR (deixa clutch ficar curto).
+    floor = min_len if min_len is not None else HARD_FLOOR
+    ceil = max_len if max_len is not None else MAX_LEN
+    # O juiz escolhe as fronteiras DENTRO da janela; uma ancora de ~MIN_LEN trava o
+    # tipo longo (story) em ~60s. Alarga a janela ate `ceil` em torno do centro, SEM
+    # invadir o vizinho (para no meio do caminho pro centro do candidato ao lado).
+    vid = video_dur if video_dur is not None else media.duration
+    centers = sorted((c.start + c.end) / 2.0 for c in candidates)
+
     judged = []  # (cand, HookResult|None, words)
     m = len(shortlist)
     for i, (cand, words, text, _ts) in enumerate(shortlist, start=1):
         _report(progress, 0.6 + 0.4 * (i - 1) / m if m else 1.0, f"Julgando {i}/{m} (visao)…")
         hook = None
         try:
+            jw_lo, jw_hi = _judge_window(cand, centers, ceil, vid)
             kf_dir = os.path.join(cache_dir, f"kf_{int(cand.start * 1000)}")
-            n_kf = max(KEYFRAMES, min(8, round((cand.end - cand.start) / 25)))
-            imgs = frames.extract_keyframes(media.path, cand.start, cand.end, n=n_kf, out_dir=kf_dir)
-            ts_text = whisper.transcript_timestamped(words)
-            win_cuts = [c for c in (cuts or []) if cand.start < c < cand.end]
+            n_kf = max(KEYFRAMES, min(8, round((jw_hi - jw_lo) / 25)))
+            imgs = frames.extract_keyframes(media.path, jw_lo, jw_hi, n=n_kf, out_dir=kf_dir)
+            jw_words = (
+                [w for w in words_all if w.end > jw_lo and w.start < jw_hi]
+                if words_all is not None else words
+            )
+            ts_text = whisper.transcript_timestamped(jw_words)
+            win_cuts = [c for c in (cuts or []) if jw_lo < c < jw_hi]
             hook = hooks.judge_candidate(
                 ts_text, imgs, game_context,
-                win_start=cand.start, win_end=cand.end,
+                win_start=jw_lo, win_end=jw_hi,
                 anchor_s=(cand.start + cand.end) / 2.0,
                 scene_cuts=win_cuts, min_len=min_len, max_len=max_len,
             )
             if hook.usage is not None:
                 usage_total = hook.usage if usage_total is None else usage_total + hook.usage
             if hook.refined_start is not None and hook.refined_end is not None:
-                rs, re_ = _floor_len(hook.refined_start, hook.refined_end, cand.start, cand.end, floor)
+                tmin, tmax = moment_bounds(hook.moment_type, floor=floor, ceil=ceil)
+                rs, re_ = _fit_moment(
+                    hook.refined_start, hook.refined_end, jw_lo, jw_hi, tmin, tmax
+                )
                 cand = Candidate(rs, re_, cand.score)
         except Exception as exc:
             print(f"[medusacut] juiz falhou no corte {i}: {exc}", file=sys.stderr)
-        judged.append((cand, hook, words))
+        # palavras da legenda: fatia a duracao FINAL (pode ter crescido/encolhido)
+        final_words = [
+            w for w in (words_all if words_all is not None else words)
+            if w.end > cand.start and w.start < cand.end
+        ]
+        judged.append((cand, hook, final_words))
 
     judged.sort(key=lambda t: t[1].virality_score if t[1] is not None else -1.0, reverse=True)
     return judged[:final_count], usage_total
@@ -446,21 +489,68 @@ def _merge_pool(proposals: list[Candidate], energy: list[Candidate]) -> list[Can
     return pool
 
 
-def _floor_len(rs: float, re_: float, lo: float, hi: float, min_len: float) -> tuple[float, float]:
-    """Garante que [rs, re_] tenha pelo menos `min_len`, encaixado em [lo, hi].
+def _render_workers(n: int) -> int:
+    """Quantos cortes renderizar em paralelo (limitado por `n`).
 
-    Evita que o refino do LLM deixe o corte curto demais.
+    ffmpeg ja usa varias threads, entao ~2 cortes concorrentes ganham tempo sem
+    oversubscrever; mais que isso satura CPU/I/O e pode ate piorar. Em maquina com <4
+    nucleos, fica serial. Override pelo usuario via `MEDUSA_RENDER_WORKERS`.
     """
-    if re_ - rs >= min_len:
+    import os as _os
+
+    env = (_os.environ.get("MEDUSA_RENDER_WORKERS") or "").strip()
+    if env.isdigit() and int(env) > 0:
+        want = int(env)
+    else:
+        want = 2 if (_os.cpu_count() or 1) >= 4 else 1
+    return max(1, min(want, n))
+
+
+def _judge_window(
+    cand: Candidate, centers: list[float], ceil: float, video_dur: float
+) -> tuple[float, float]:
+    """Janela LARGA pro juiz: ate `ceil` em torno do centro da ancora, presa em
+    [0, video_dur] e SEM passar do meio-do-caminho pro centro do vizinho (evita que
+    duas ancoras proximas gerem cortes sobrepostos). Nunca menor que a ancora.
+    """
+    ctr = (cand.start + cand.end) / 2.0
+    lefts = [c for c in centers if c < ctr - 1e-6]
+    rights = [c for c in centers if c > ctr + 1e-6]
+    lo_bound = 0.0 if not lefts else (max(lefts) + ctr) / 2.0
+    hi_bound = video_dur if not rights else (min(rights) + ctr) / 2.0
+    half = ceil / 2.0
+    jw_lo = max(lo_bound, ctr - half)
+    jw_hi = min(hi_bound, ctr + half)
+    # nunca encolher abaixo da propria ancora
+    jw_lo = max(0.0, min(jw_lo, cand.start))
+    jw_hi = min(video_dur, max(jw_hi, cand.end))
+    return jw_lo, jw_hi
+
+
+def _fit_moment(
+    rs: float, re_: float, lo: float, hi: float, tmin: float, tmax: float
+) -> tuple[float, float]:
+    """Prende a duracao do refino do LLM na faixa do TIPO [tmin, tmax], dentro da
+    janela [lo, hi]. Cresce/encolhe em torno do centro; se a janela for menor que
+    `tmin`, usa a janela toda.
+
+    Substitui o antigo piso unico: agora um clutch curto NAO e esticado pra 60s, e
+    uma historia longa NAO e cortada — cada tipo tem sua faixa (hooks.moments).
+    """
+    win = hi - lo
+    tmax = min(tmax, win)
+    tmin = min(tmin, tmax)
+    length = re_ - rs
+    target = max(tmin, min(length, tmax))
+    if abs(target - length) < 1e-6:
         return rs, re_
-    span = min(min_len, hi - lo)
     mid = (rs + re_) / 2.0
-    rs = mid - span / 2.0
-    re_ = mid + span / 2.0
+    rs = mid - target / 2.0
+    re_ = mid + target / 2.0
     if rs < lo:
-        rs, re_ = lo, lo + span
+        rs, re_ = lo, lo + target
     if re_ > hi:
-        re_, rs = hi, hi - span
+        re_, rs = hi, hi - target
     return rs, re_
 
 

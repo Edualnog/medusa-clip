@@ -15,11 +15,13 @@ from __future__ import annotations
 
 from medusacut.types import Candidate, ScoreTrack
 
-# Limites/duracao do corte (segundos). Cortes de gameplay precisam de CONTEXTO
-# (setup -> climax -> payoff), entao a faixa e LONGA: 1 a 5 min. A janela aqui e so
-# uma ANCORA — o juiz LLM escolhe as fronteiras finais vendo o contexto largo.
+# Limites/duracao da ANCORA de busca (segundos). Cortes de gameplay precisam de
+# CONTEXTO (setup -> climax -> payoff). A janela aqui e so uma ANCORA — o juiz LLM
+# escolhe as fronteiras finais dentro dela, e a duracao FINAL e travada pela faixa do
+# TIPO de momento (hooks.moments: clutch curto ... story ate 180s). MAX_LEN casa com
+# o teto da taxonomia p/ a ancora nunca ser estreita demais pro tipo mais longo.
 MIN_LEN = 60.0
-MAX_LEN = 300.0
+MAX_LEN = 180.0
 # Fracao do pico ate onde a janela cresce ("ainda tem acao aqui?"). Mais baixo =
 # janelas crescem mais (ancoras maiores, menos coladas no minimo).
 SUSTAIN_FRAC = 0.07

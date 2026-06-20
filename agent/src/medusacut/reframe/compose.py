@@ -20,7 +20,14 @@ from medusacut.types import Candidate, Media
 
 TARGET_W = 1080
 TARGET_H = 1920
-FACECAM_H = 640  # faixa de cima (rosto); resto e gameplay
+FACECAM_H = 640  # fallback da faixa de cima qdo nao da pra medir a proporcao do cam
+# A altura do painel do facecam e ADAPTATIVA (casa com a proporcao do cam p/ encher a
+# largura sem barras laterais), clampada nesta faixa p/ o gameplay seguir dominante.
+FACECAM_H_MIN = 480
+FACECAM_H_MAX = 760
+# Encher o painel corta um pouco do cam. Acima deste corte vertical (fracao) preferimos
+# ENCAIXAR centrado sobre o fundo borrado a cortar testa/queixo (cam alto/quadrado).
+_MAX_CAM_VCROP = 0.20
 BLUR_SIGMA = 24
 # O fundo borrado nao precisa de full-res: borrar em 1/5 (216x384) e reescalar custa
 # ~25x menos que gblur em 1080x1920 — visual ~identico. (Era 41% do tempo total.)
@@ -33,7 +40,7 @@ def _squarify_cam_box(
     media_w: int,
     media_h: int,
     *,
-    max_aspect: float = 1.2,
+    max_aspect: float = 1.7,
 ) -> tuple[float, float, float, float]:
     """Da headroom vertical a uma caixa de facecam ACHATADA (larga/curta em PIXELS).
 
@@ -58,6 +65,29 @@ def _squarify_cam_box(
         ny0 -= ny1 - 1.0
         ny1 = 1.0
     return (x0, round(max(0.0, ny0), 4), x1, round(min(1.0, ny1), 4))
+
+
+def _facecam_panel(
+    cam_w_px: float, cam_h_px: float, *, default_h: int = FACECAM_H
+) -> tuple[int, bool]:
+    """Altura do painel do facecam + se ENCHE (cover) ou ENCAIXA (fit) o cam.
+
+    O painel tem largura fixa `TARGET_W`. Escolhemos a altura que casa com a
+    proporcao do cam (enche a largura sem barras laterais), clampada em
+    `[FACECAM_H_MIN, FACECAM_H_MAX]` p/ o gameplay seguir dominante.
+
+    Encher (cover) corta um pouco do cam. Se o corte vertical passar de
+    `_MAX_CAM_VCROP` (cam alto/quadrado num painel mais baixo), devolve
+    `fill=False` -> encaixa centrado sobre o fundo borrado (sem cortar o rosto)."""
+    if cam_w_px <= 0 or cam_h_px <= 0:
+        return default_h, True
+    ar = cam_w_px / cam_h_px
+    natural = TARGET_W / ar  # altura que enche a largura SEM cortar
+    panel_h = int(round(min(FACECAM_H_MAX, max(FACECAM_H_MIN, natural))))
+    panel_h -= panel_h % 2  # par (overlay/yuv420p): casa c/ game_h = TARGET_H - panel_h
+    # cover so corta na vertical qdo o painel ficou mais BAIXO que o natural.
+    vcrop = max(0.0, (natural - panel_h) / natural)
+    return panel_h, vcrop <= _MAX_CAM_VCROP
 
 
 def _blurred_bg(src: str, out: str) -> str:
@@ -85,15 +115,24 @@ def render_facecam_layout(
     """Rosto em cima + gameplay dinamico embaixo + blur.
 
     A caixa do facecam vem de `facecam_box` (x0,y0,x1,y1 normalizados) se dado,
-    senao do preset do `facecam_corner`. `facecam_h` controla a altura do painel."""
+    senao do preset do `facecam_corner`. A altura do painel e ADAPTATIVA (casa com a
+    proporcao do cam p/ encher a largura sem barras); `facecam_h` so e usado como
+    fallback quando nao da pra medir a proporcao do cam. Ver `_facecam_panel`."""
     rect = facecam_box or facecam_rect(facecam_corner)
     if rect is None:
         raise ValueError(f"facecam_corner/box invalido p/ este layout: {facecam_corner!r}")
-    # headroom: evita cortar queixo/topo da cabeca quando a box vem achatada.
+    # headroom: socorre box patologicamente achatada (evita cortar queixo/topo).
     rect = _squarify_cam_box(rect, int(media.width), int(media.height))
 
+    # caixa do cam em px + altura do painel ADAPTATIVA (casa c/ a proporcao do cam).
+    cw = int(rect[2] * media.width) - int(rect[0] * media.width)
+    ch = int(rect[3] * media.height) - int(rect[1] * media.height)
+    cx = int(rect[0] * media.width)
+    cy = int(rect[1] * media.height)
+    panel_h, fill = _facecam_panel(cw, ch, default_h=facecam_h)
+
     os.makedirs(cache_dir, exist_ok=True)
-    game_h = TARGET_H - facecam_h
+    game_h = TARGET_H - panel_h
     base = os.path.splitext(os.path.basename(out_path))[0]
 
     # UMA passada: a fonte e decodificada 1x e split em 3 (fundo borrado, facecam,
@@ -110,18 +149,28 @@ def render_facecam_layout(
         sendcmd_path=os.path.join(cache_dir, f"{base}.panel.sendcmd"),
     )
 
-    cw = int(rect[2] * media.width) - int(rect[0] * media.width)
-    ch = int(rect[3] * media.height) - int(rect[1] * media.height)
-    cx = int(rect[0] * media.width)
-    cy = int(rect[1] * media.height)
+    if fill:
+        # ENCHE o painel (cover): sem barras laterais; corta o minimo no eixo longo.
+        cam_filter = (
+            f"[cam]crop={cw}:{ch}:{cx}:{cy},"
+            f"scale={TARGET_W}:{panel_h}:force_original_aspect_ratio=increase,"
+            f"crop={TARGET_W}:{panel_h}[camS];"
+            f"[bgb][camS]overlay=x=0:y=0[mid];"
+        )
+    else:
+        # ENCAIXA (fit) centrado sobre o fundo borrado — cam alto/quadrado, p/ nao
+        # cortar o rosto; aceita barras no fundo desfocado.
+        cam_filter = (
+            f"[cam]crop={cw}:{ch}:{cx}:{cy},"
+            f"scale={TARGET_W}:{panel_h}:force_original_aspect_ratio=decrease[camS];"
+            f"[bgb][camS]overlay=x=(W-w)/2:y=({panel_h}-h)/2[mid];"
+        )
     filtergraph = (
         "[0:v]split=3[bg][cam][gsrc];"
         f"{_blurred_bg('bg', 'bgb')};"
-        f"[cam]crop={cw}:{ch}:{cx}:{cy},"
-        f"scale={TARGET_W}:{facecam_h}:force_original_aspect_ratio=decrease[camS];"
-        f"[bgb][camS]overlay=x=(W-w)/2:y=({facecam_h}-h)/2[mid];"
+        f"{cam_filter}"
         f"{panel};"
-        f"[mid][game]overlay=x=0:y={facecam_h}[outv]"
+        f"[mid][game]overlay=x=0:y={panel_h}[outv]"
     )
     dur = max(0.0, candidate.end - candidate.start)
     cmd = [

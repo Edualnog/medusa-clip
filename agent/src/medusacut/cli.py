@@ -23,6 +23,18 @@ def app(argv: list[str] | None = None) -> int:
         default=3,
         help="numero maximo de cortes (default: 3)",
     )
+    parser.add_argument(
+        "--min-len",
+        type=float,
+        default=None,
+        help="duracao minima do corte em s (default: faixa por tipo de momento)",
+    )
+    parser.add_argument(
+        "--max-len",
+        type=float,
+        default=None,
+        help="duracao maxima do corte em s (default: faixa por tipo, ate ~180)",
+    )
     args = parser.parse_args(argv)
 
     # Import pesado adiado: mantem o startup do CLI leve.
@@ -34,7 +46,8 @@ def app(argv: list[str] | None = None) -> int:
 
     try:
         clips = generate_clips(
-            args.url, out_dir=args.out, max_clips=args.clips, progress=progress
+            args.url, out_dir=args.out, max_clips=args.clips,
+            min_len=args.min_len, max_len=args.max_len, progress=progress
         )
     except RuntimeError as exc:
         print(f"\nerro: {exc}", file=sys.stderr)

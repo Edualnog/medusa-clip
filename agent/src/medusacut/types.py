@@ -69,6 +69,7 @@ class Clip:
     reason: str = ""
     virality_score: float | None = None
     description: str = ""  # legenda/descricao pronta pra postar (TikTok)
+    moment_type: str = ""  # tipo do momento (clutch/fail/.../story) -> faixa de duracao
 
     def to_manifest_entry(self) -> dict:
         return {
@@ -76,6 +77,8 @@ class Clip:
             "file": self.file,
             "start": round(self.start, 3),
             "end": round(self.end, 3),
+            "duration": round(self.end - self.start, 3),
+            "moment_type": self.moment_type,
             "score": round(self.score, 4),
             "hook": self.hook,
             "reason": self.reason,

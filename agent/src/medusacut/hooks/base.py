@@ -15,8 +15,10 @@ from dataclasses import dataclass
 from medusacut.types import Candidate
 
 _SYSTEM = (
-    "Voce e um editor especialista em cortes de GAMEPLAY pro TikTok (vertical 9:16), no "
-    "formato de 1 a 5 MINUTOS — cortes COM CONTEXTO, nao shorts soltos de 2s. Um bom corte "
+    "Voce e um editor especialista em cortes de GAMEPLAY pro TikTok (vertical 9:16). A "
+    "DURACAO varia com o TIPO do momento: um clutch/fail/reacao e punchy e curto (~15-45s), "
+    "uma treta/build-up/RP/historia pede arco longo (ate ~3min). Corte COM CONTEXTO, sem "
+    "esticar um lance rapido nem cortar uma historia pela metade. Um bom corte "
     "tem ARCO: setup (o lance comecando a se montar), build-up/tensao, climax e payoff/reacao "
     "— precisa fazer sentido sozinho pra quem nunca viu a live. O comeco tem que prender, mas "
     "o valor esta no MOMENTO COMPLETO. Avalie pela chance real de prender e viralizar "
@@ -44,6 +46,7 @@ class HookResult:
     reason: str
     virality_score: float
     description: str = ""  # legenda pronta pra postar (TikTok), com hashtags
+    moment_type: str = ""  # tipo do momento (clutch/fail/.../story) -> faixa de duracao
     refined_start: float | None = None
     refined_end: float | None = None
     usage: object | None = None  # llm.Usage da chamada
@@ -60,14 +63,18 @@ def _judge_user(
     min_len: float | None = None,
     max_len: float | None = None,
 ) -> str:
+    from medusacut.hooks.moments import prompt_lines
+
+    dur_rule = (
+        "Classifique o TIPO do momento e escolha a duracao NATURAL desse tipo — nao "
+        "estique um lance rapido nem corte uma historia. Tipos e faixas (segundos):\n"
+        f"{prompt_lines()}\n"
+        "Devolva o tipo em \"moment_type\" e faca best_start_s/best_end_s baterem com a "
+        "faixa do tipo escolhido (clutch/fail/reacao = punchy e curto; treta/build-up/"
+        "RP = arco longo)."
+    )
     if min_len is not None and max_len is not None:
-        dur_rule = (
-            f"O corte DEVE ter entre {min_len:.0f} e {max_len:.0f} segundos — escolha a "
-            f"duracao pelo conteudo (um lance com contexto costuma pedir mais). "
-            f"best_start_s/best_end_s devem respeitar essa faixa."
-        )
-    else:
-        dur_rule = "Escolha o melhor inicio/fim do momento (best_start_s/best_end_s)."
+        dur_rule += f"\nAlem disso, a duracao final deve ficar entre {min_len:.0f} e {max_len:.0f}s."
     anchor_line = f"Pico de acao por volta de ~{anchor_s:.1f}s.\n" if anchor_s is not None else ""
     cuts_line = ""
     if scene_cuts:
@@ -91,12 +98,16 @@ def _judge_user(
         '  "virality_score": inteiro 0-100 calibrado,\n'
         '  "description": legenda PRONTA PRA POSTAR no TikTok (1-2 frases chamativas '
         "em PT-BR + 3-5 hashtags relevantes de games no final),\n"
+        '  "moment_type": um dos tipos listados acima (clutch/fail/reaction/funny/'
+        'highlight/drama/buildup/story),\n'
         '  "best_start_s": melhor inicio (segundos absolutos, dentro da janela),\n'
         '  "best_end_s": melhor fim (segundos absolutos, dentro da janela).\n'
     )
 
 
 def _hook_from_data(data: dict, lo: float, hi: float, usage) -> HookResult:
+    from medusacut.hooks.moments import normalize_moment
+
     score = _clamp(_to_float(data.get("virality_score"), 0.0), 0.0, 100.0)
     rs = _refined(data.get("best_start_s"), lo, hi)
     re_ = _refined(data.get("best_end_s"), lo, hi)
@@ -107,6 +118,7 @@ def _hook_from_data(data: dict, lo: float, hi: float, usage) -> HookResult:
         reason=str(data.get("reason", "")).strip(),
         virality_score=score,
         description=str(data.get("description", "")).strip(),
+        moment_type=normalize_moment(data.get("moment_type")),
         refined_start=rs,
         refined_end=re_,
         usage=usage,

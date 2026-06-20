@@ -52,3 +52,35 @@ def test_squarify_leaves_squarish_box():
     # box ja ~quadrada em px (300x300) -> inalterada
     rect = (0.0, 0.0, 300/1920, 300/1080)
     assert _squarify_cam_box(rect, 1920, 1080, max_aspect=1.2) == rect
+
+
+def test_facecam_panel_landscape_fills_without_crop():
+    from medusacut.reframe.compose import _facecam_panel, FACECAM_H_MIN, FACECAM_H_MAX
+    # webcam landscape tipica (~1.6:1): altura casa com a proporcao -> enche, sem corte
+    panel_h, fill = _facecam_panel(729, 453)
+    assert fill is True
+    assert FACECAM_H_MIN <= panel_h <= FACECAM_H_MAX
+    assert panel_h % 2 == 0
+    natural = round(1080 / (729 / 453))
+    assert abs(panel_h - natural) <= 1  # ~altura natural (zero corte), ajustada p/ par
+
+
+def test_facecam_panel_very_wide_clamps_to_min_and_fills():
+    from medusacut.reframe.compose import _facecam_panel, FACECAM_H_MIN
+    # cam muito largo (3:1): natural < MIN -> clampa em MIN, corta nas laterais (fill)
+    panel_h, fill = _facecam_panel(900, 300)
+    assert panel_h == FACECAM_H_MIN
+    assert fill is True
+
+
+def test_facecam_panel_square_cam_falls_back_to_fit():
+    from medusacut.reframe.compose import _facecam_panel, FACECAM_H_MAX
+    # cam quadrado: encher exigiria cortar muito na vertical -> encaixa (fit)
+    panel_h, fill = _facecam_panel(300, 300)
+    assert panel_h == FACECAM_H_MAX
+    assert fill is False
+
+
+def test_facecam_panel_unknown_dims_uses_default():
+    from medusacut.reframe.compose import _facecam_panel
+    assert _facecam_panel(0, 0, default_h=640) == (640, True)

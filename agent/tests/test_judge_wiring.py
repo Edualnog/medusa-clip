@@ -43,8 +43,9 @@ def test_prepare_candidates_calls_judge_with_window(monkeypatch, tmp_path):
         min_len=60, max_len=180, cuts=[120.0, 500.0],
     )
 
-    # o juiz foi chamado com a janela do candidato (o bug nao passava isso)
-    assert captured["win_start"] == 100.0 and captured["win_end"] == 180.0
+    # o juiz e chamado com a janela ALARGADA (centro 140 +- ceil/2=90 -> [50,230]),
+    # nao a ancora crua — assim um tipo longo (story) consegue esticar alem dos 80s.
+    assert captured["win_start"] == 50.0 and captured["win_end"] == 230.0
     assert captured["min_len"] == 60 and captured["max_len"] == 180
     # so as cenas DENTRO da janela
     assert captured["scene_cuts"] == [120.0]

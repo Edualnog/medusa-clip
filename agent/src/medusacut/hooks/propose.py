@@ -13,8 +13,9 @@ from __future__ import annotations
 from medusacut.types import Candidate
 
 _SYSTEM = (
-    "Voce e um editor especialista em cortes de GAMEPLAY pro TikTok (vertical, 1 a 3 MINUTOS, "
-    "com CONTEXTO). Recebe a transcricao COM TEMPO de um video inteiro de uma live/gameplay e "
+    "Voce e um editor especialista em cortes de GAMEPLAY pro TikTok (vertical, COM CONTEXTO; a "
+    "duracao varia com o tipo do momento: ~15-45s num clutch/fail/reacao, ate ~3min numa "
+    "treta/RP/historia). Recebe a transcricao COM TEMPO de um video inteiro de uma live/gameplay e "
     "escolhe os MELHORES momentos pra virar cortes. Um bom corte tem ARCO completo (setup -> "
     "tensao/build-up -> climax -> payoff/reacao) e faz sentido sozinho pra quem nunca viu a live. "
     "Priorize: reviravolta, clutch, fail epico, treta/discussao, historia engracada, reacao forte, "
