@@ -126,6 +126,20 @@ button:focus-visible, input:focus-visible, select:focus-visible {
   letter-spacing: .7px;
 }
 .sidebar-foot strong { color: var(--muted); }
+.foot-right { display: flex; align-items: center; gap: 8px; }
+.gh-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--dim);
+  transition: color .15s ease;
+}
+.gh-link:hover { color: var(--accent); }
+.gh-link svg { display: block; width: 14px; height: 14px; fill: currentColor; }
 
 .main { min-width: 0; min-height: 0; display: grid; grid-template-rows: 82px 1fr; }
 .topbar {

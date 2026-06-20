@@ -306,8 +306,13 @@ function isNewerVersion(a, b) {
   return false;
 }
 
+// Update do Mac (app NAO assinado): o swap nativo do Squirrel.Mac exige assinatura,
+// entao em vez de auto-instalar a gente BAIXA o .dmg da release e ABRE o instalador
+// (o usuario arrasta pra Applications). Guardamos o asset achado aqui pra o download
+// nao depender de URL vinda do renderer (defesa contra renderer comprometido).
+let pendingMacUpdate = null; // { version, dmgUrl, dmgName }
+
 async function checkMacUpdate() {
-  // Sem assinatura, o swap nativo nao funciona no Mac -> so avisa + link pro site.
   if (GITHUB_REPO.includes("PLACEHOLDER")) return;
   try {
     const r = await fetchWithTimeout(
@@ -317,13 +322,70 @@ async function checkMacUpdate() {
     if (!r.ok) return;
     const data = await r.json();
     const latest = String(data.tag_name || "").replace(/^v/, "");
-    if (latest && isNewerVersion(latest, app.getVersion())) {
-      sendToWin("update-site", { version: latest, url: DOWNLOAD_PAGE });
+    if (!latest || !isNewerVersion(latest, app.getVersion())) return;
+
+    // Acha o instalador do Mac (.dmg) na release. So buildamos arm64 (Apple Silicon).
+    const asset = (data.assets || []).find(
+      (a) => /mac/i.test(a.name || "") && String(a.name).endsWith(".dmg")
+    );
+    if (asset && asset.browser_download_url) {
+      pendingMacUpdate = { version: latest, dmgUrl: asset.browser_download_url, dmgName: asset.name };
     }
+    sendToWin("update-site", { version: latest, url: DOWNLOAD_PAGE, canAutoDownload: Boolean(pendingMacUpdate) });
   } catch {
     /* update nunca derruba o app */
   }
 }
+
+// Baixa um arquivo via fetch (segue redirect), reportando progresso (%), com backpressure.
+async function downloadFile(url, destPath, onProgress) {
+  const { Readable, Transform } = require("stream");
+  const { pipeline } = require("stream/promises");
+  const res = await fetch(url, { redirect: "follow" });
+  if (!res.ok || !res.body) throw new Error("download respondeu " + res.status);
+  const total = Number(res.headers.get("content-length") || 0);
+  let received = 0;
+  const counter = new Transform({
+    transform(chunk, _enc, cb) {
+      received += chunk.length;
+      if (total && onProgress) onProgress(Math.round((received / total) * 100));
+      cb(null, chunk);
+    },
+  });
+  await pipeline(Readable.fromWeb(res.body), counter, fs.createWriteStream(destPath));
+}
+
+// Mac: baixa o .dmg da release pra ~/Downloads e abre o instalador. So aceita URLs
+// do GitHub (a info vem do nosso checkMacUpdate, nao do renderer).
+ipcMain.handle("download-mac-update", async () => {
+  const info = pendingMacUpdate;
+  if (!info || !info.dmgUrl) {
+    shell.openExternal(DOWNLOAD_PAGE);
+    return { ok: false, error: "Sem instalador para baixar." };
+  }
+  let host = "";
+  try {
+    host = new URL(info.dmgUrl).hostname.toLowerCase();
+  } catch {
+    host = "";
+  }
+  const allowed = host === "github.com" || host.endsWith(".github.com") || host.endsWith(".githubusercontent.com");
+  if (!allowed) {
+    shell.openExternal(DOWNLOAD_PAGE);
+    return { ok: false, error: "Origem do download não confiável." };
+  }
+  const dest = path.join(app.getPath("downloads"), info.dmgName || "MedusaClip-mac-arm64.dmg");
+  try {
+    sendToWin("update-progress", { percent: 0 });
+    await downloadFile(info.dmgUrl, dest, (pct) => sendToWin("update-progress", { percent: pct }));
+    await shell.openPath(dest); // abre o .dmg (Finder mostra arrastar -> Applications)
+    sendToWin("mac-update-opened", { version: info.version, path: dest });
+    return { ok: true, path: dest };
+  } catch (e) {
+    sendToWin("mac-update-error", { message: (e && e.message) || "Falha no download." });
+    return { ok: false, error: (e && e.message) || "Falha no download." };
+  }
+});
 
 function setupUpdates() {
   if (!app.isPackaged) return; // dev (npm start): nao checa update
@@ -378,6 +440,7 @@ app.on("activate", () => {
 
 ipcMain.handle("get-version", () => app.getVersion());
 ipcMain.handle("open-download-page", () => shell.openExternal(DOWNLOAD_PAGE));
+ipcMain.handle("open-github", () => shell.openExternal(`https://github.com/${GITHUB_REPO}/releases`));
 ipcMain.handle("pick-file", async () => {
   const r = await dialog.showOpenDialog(win, {
     properties: ["openFile"],

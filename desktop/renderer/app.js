@@ -828,6 +828,9 @@ window.api.getVersion().then((v) => {
   if (v) $("appVersion").textContent = "V" + v;
 }).catch(() => {});
 
+// Ícone do GitHub no rodapé -> abre as releases no navegador do sistema.
+$("ghLink").addEventListener("click", () => window.api.openGithub());
+
 function showUpdateBanner(text, btnLabel, onClick) {
   const btn = $("updateBannerBtn");
   $("updateBannerText").textContent = text;
@@ -852,7 +855,22 @@ window.api.onUpdateProgress((m) => showUpdateBanner(`BAIXANDO ATUALIZAÇÃO… $
 window.api.onUpdateReady((m) =>
   showUpdateBanner(`V${m.version} PRONTA — REINICIE PRA INSTALAR`, "REINICIAR", () => window.api.installUpdate())
 );
-// macOS sem assinatura: não troca o binário no app -> manda baixar no site.
-window.api.onUpdateSite((m) =>
-  showUpdateBanner(`NOVA VERSÃO V${m.version} DISPONÍVEL`, "BAIXAR NO SITE", () => window.api.openDownloadPage())
+// macOS sem assinatura: o app não troca o próprio binário (Squirrel.Mac exige
+// assinatura). Então BAIXA o .dmg da release e ABRE o instalador automaticamente —
+// o usuário só arrasta pra Applications. Se não houver instalador, cai pro site.
+window.api.onUpdateSite((m) => {
+  if (m.canAutoDownload) {
+    showUpdateBanner(`NOVA VERSÃO V${m.version} DISPONÍVEL`, "BAIXAR E INSTALAR", () => {
+      showUpdateBanner("BAIXANDO ATUALIZAÇÃO…", null);
+      window.api.downloadMacUpdate();
+    });
+  } else {
+    showUpdateBanner(`NOVA VERSÃO V${m.version} DISPONÍVEL`, "BAIXAR NO SITE", () => window.api.openDownloadPage());
+  }
+});
+window.api.onMacUpdateOpened(() =>
+  showUpdateBanner("INSTALADOR ABERTO — ARRASTE O APP PRA PASTA APPLICATIONS", null)
+);
+window.api.onMacUpdateError(() =>
+  showUpdateBanner("FALHA AO BAIXAR", "BAIXAR NO SITE", () => window.api.openDownloadPage())
 );

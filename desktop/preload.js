@@ -34,10 +34,14 @@ contextBridge.exposeInMainWorld("api", {
   // Versao + auto-update
   getVersion: () => ipcRenderer.invoke("get-version"),
   openDownloadPage: () => ipcRenderer.invoke("open-download-page"),
+  openGithub: () => ipcRenderer.invoke("open-github"),
   downloadUpdate: () => ipcRenderer.invoke("update-download"),
   installUpdate: () => ipcRenderer.invoke("update-install"),
+  downloadMacUpdate: () => ipcRenderer.invoke("download-mac-update"),
   onUpdateAvailable: (cb) => ipcRenderer.on("update-available", (_e, m) => cb(m)),
   onUpdateProgress: (cb) => ipcRenderer.on("update-progress", (_e, m) => cb(m)),
   onUpdateReady: (cb) => ipcRenderer.on("update-ready", (_e, m) => cb(m)),
   onUpdateSite: (cb) => ipcRenderer.on("update-site", (_e, m) => cb(m)),
+  onMacUpdateOpened: (cb) => ipcRenderer.on("mac-update-opened", (_e, m) => cb(m)),
+  onMacUpdateError: (cb) => ipcRenderer.on("mac-update-error", (_e, m) => cb(m)),
 });
