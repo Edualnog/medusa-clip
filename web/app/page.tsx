@@ -95,9 +95,9 @@ export default function Home() {
           <div className="hero-copy">
             <div className="eyebrow">ESPECIALISTA EM GAMEPLAY · 100% LOCAL</div>
             <h1>
-              FEITO SÓ
+              FEITO PRA
               <br />
-              PRA GAMEPLAY.
+              GAMEPLAY.
               <br />
               <span>SEUS MELHORES CLIPS.</span>
             </h1>
@@ -219,30 +219,24 @@ export default function Home() {
           </p>
         </section>
 
-        <section className="section shell-width pricing-section" id="liberdade">
-          <div className="pricing-copy">
-            <SectionTag>GRÁTIS E NO SEU CONTROLE</SectionTag>
-            <h2>GRÁTIS.<br />PRA SEMPRE.</h2>
+        <section className="section section-bordered shell-width" id="liberdade">
+          <SectionTag>GRÁTIS E NO SEU CONTROLE</SectionTag>
+          <div className="section-heading">
+            <h2>GRÁTIS DE VERDADE.<br />SEM TRAVA.</h2>
             <p>
               O Medusa Clip é gratuito. A IA roda na SUA chave da OpenRouter — você paga
-              só o custo real dos modelos, direto ao provedor. Sem intermediário e sem
-              trava: seus clips, suas chaves, sua liberdade.
+              só o custo real dos modelos, direto ao provedor, e o resto é seu: seus
+              clips ficam no seu PC, suas chaves no seu controle, sua liberdade intacta.
             </p>
           </div>
-          <article className="price-card">
-            <span className="price-label">MEDUSA CLIP</span>
-            <div className="price">GRÁTIS <span>/ PRA SEMPRE</span></div>
-            <ul>
-              <li>Especializado em cortes de gameplay</li>
-              <li>Roda na sua própria chave de IA</li>
-              <li>Processamento 100% local e privado</li>
-              <li>Legenda karaokê e reframe automático</li>
-              <li>Atualizações automáticas no desktop</li>
-            </ul>
+          <div className="hero-actions">
             <Link className="button button-primary" href="/login">
               CRIAR CONTA GRÁTIS
             </Link>
-          </article>
+            <a className="button button-secondary" href="#download">
+              BAIXAR AGORA
+            </a>
+          </div>
         </section>
 
         <section className="section shell-width faq-section">
