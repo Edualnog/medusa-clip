@@ -726,10 +726,15 @@ ipcMain.on("generate", (_e, opts) => {
     "--facecam", opts.facecam,
   ];
   if (!opts.captions) args.push("--no-captions");
-  if (opts.key) args.push("--key", opts.key);
+
+  // A chave da OpenRouter vai por VARIÁVEL DE AMBIENTE (LLM_API_KEY), nunca por argv:
+  // argumentos de processo são visíveis a outros processos/usuários locais (ps -ef).
+  // O motor já lê LLM_API_KEY do ambiente, então o --key fica só pra uso manual do binário.
+  const env = engineEnv();
+  if (opts.key) env.LLM_API_KEY = opts.key;
 
   try {
-    child = spawn(enginePath(), args, { env: engineEnv() });
+    child = spawn(enginePath(), args, { env });
   } catch (e) {
     win.webContents.send("job-error", { message: "Não consegui iniciar o motor: " + e.message });
     return;
