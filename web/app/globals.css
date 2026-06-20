@@ -514,32 +514,127 @@ a {
   letter-spacing: 0.8px;
 }
 
-/* Comando de terminal por card de download (alternativa ao botao BAIXAR). */
-.download-cmd {
-  margin: 16px 0;
-  text-align: left;
+/* Seletor de plataforma + painel unico (download-picker, client component).
+   3 quadrados (macOS/Windows/Linux); ao escolher, aparece o painel com BAIXAR +
+   comando de terminal copiavel. */
+.dl-picker {
+  max-width: 640px;
+  margin-inline: auto;
 }
 
-.download-cmd > span {
+.dl-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.dl-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 88px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--muted);
+  font-family: var(--font-pixel);
+  font-size: 9px;
+  letter-spacing: 0.8px;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 120ms ease, transform 120ms ease;
+}
+
+.dl-tab span:last-child {
+  color: var(--dim);
+  font-size: 7px;
+}
+
+.dl-tab:hover {
+  border-color: var(--line-strong);
+  transform: translateY(-2px);
+}
+
+.dl-tab.is-active {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.dl-tab.is-active span:last-child {
+  color: var(--accent);
+}
+
+.dl-panel {
+  margin-top: 14px;
+  padding: 28px;
+  border: 1px solid var(--line-strong);
+  background: var(--panel);
+  box-shadow: 10px 10px 0 var(--accent-dark);
+}
+
+.dl-panel-head h3 {
+  margin: 0 0 10px;
+  font-family: var(--font-pixel);
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+.dl-panel-head p {
+  margin: 0 0 24px;
+  color: var(--dim);
+  font-family: var(--font-pixel);
+  font-size: 7px;
+  letter-spacing: 0.8px;
+}
+
+.dl-panel .download-btn {
+  margin: 0 0 20px;
+}
+
+.dl-cmd > span {
   display: block;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
   color: var(--dim);
   font-family: var(--font-pixel);
   font-size: 6px;
   letter-spacing: 0.8px;
 }
 
-.download-cmd code {
-  display: block;
-  padding: 9px 10px;
+.dl-cmd-box {
+  display: flex;
+  align-items: stretch;
   border: 1px solid var(--line);
   background: #0a0a0d;
+}
+
+.dl-cmd-box code {
+  flex: 1;
+  padding: 12px;
   color: var(--accent);
   font-family: var(--font-body);
-  font-size: 14px;
-  line-height: 1.35;
+  font-size: 15px;
+  line-height: 1.4;
   letter-spacing: 0.3px;
   word-break: break-all;
+}
+
+.dl-copy {
+  flex-shrink: 0;
+  padding: 0 16px;
+  border: 0;
+  border-left: 1px solid var(--line);
+  background: var(--panel-strong);
+  color: var(--accent);
+  font-family: var(--font-pixel);
+  font-size: 7px;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.dl-copy:hover {
+  background: var(--accent);
+  color: #060608;
 }
 
 .pricing-section {

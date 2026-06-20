@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { DownloadPicker } from "./download-picker";
 import { MedusaLogo } from "./medusa-logo";
 
 const BENEFITS = [
@@ -26,35 +27,6 @@ const STEPS = [
   { number: "3", title: "ESCOLHA", text: "Selecione um vídeo local ou cole um link público de gameplay." },
   { number: "4", title: "PUBLIQUE", text: "Receba clips 9:16 com título, legenda karaokê e reframe automático." },
 ];
-
-// Repo PÚBLICO (source-available) que hospeda código + releases. Os links apontam
-// pra release `latest`, e os nomes de asset são fixos (artifactName no
-// electron-builder do desktop).
-const RELEASE_REPO = "Edualnog/medusa-cut";
-const releaseUrl = (asset: string) =>
-  `https://github.com/${RELEASE_REPO}/releases/latest/download/${asset}`;
-const RELEASES_READY = !RELEASE_REPO.includes("PLACEHOLDER");
-
-const DOWNLOADS = [
-  { platform: "macOS", variant: "APPLE SILICON", architecture: "ARM64", format: ".DMG", asset: "MedusaClip-mac-arm64.dmg" },
-  { platform: "Windows", variant: "WINDOWS 10/11", architecture: "X64", format: ".EXE", asset: "MedusaClip-win-x64.exe" },
-  { platform: "Linux", variant: "LINUX DESKTOP", architecture: "X64", format: ".APPIMAGE", asset: "MedusaClip-linux-x86_64.AppImage" },
-];
-
-// Comando de 1 linha pra baixar pelo terminal de cada SO (alternativa ao botão).
-function downloadCommand(platform: string, asset: string) {
-  const url = releaseUrl(asset);
-  switch (platform) {
-    case "macOS":
-      return `curl -L -o MedusaClip.dmg ${url} && open MedusaClip.dmg`;
-    case "Windows": // PowerShell
-      return `iwr ${url} -OutFile MedusaClip.exe; .\\MedusaClip.exe`;
-    case "Linux":
-      return `curl -L ${url} -o MedusaClip.AppImage && chmod +x MedusaClip.AppImage && ./MedusaClip.AppImage`;
-    default:
-      return "";
-  }
-}
 
 const FAQ = [
   {
@@ -213,33 +185,7 @@ export default function Home() {
             </p>
           </div>
 
-          <div className="download-grid">
-            {DOWNLOADS.map((download) => (
-              <article className="download-card" key={`${download.platform}-${download.variant}`}>
-                <div className="download-card-top">
-                  <span>{download.platform}</span>
-                  <span>{download.format}</span>
-                </div>
-                <h3>{download.variant}</h3>
-                <p>ARQUITETURA {download.architecture}</p>
-                {RELEASES_READY ? (
-                  <>
-                    <div className="download-cmd">
-                      <span>OU NO TERMINAL</span>
-                      <code>{downloadCommand(download.platform, download.asset)}</code>
-                    </div>
-                    <a className="download-btn" href={releaseUrl(download.asset)} rel="noopener">
-                      BAIXAR
-                    </a>
-                  </>
-                ) : (
-                  <button type="button" disabled>
-                    EM BREVE
-                  </button>
-                )}
-              </article>
-            ))}
-          </div>
+          <DownloadPicker />
           <p className="download-note">
             CADA INSTALADOR JÁ TRAZ O APP, O MOTOR DE CORTES, FFMPEG E FFPROBE EMBUTIDOS — E É GRÁTIS. SEM PYTHON, SEM DEPENDÊNCIAS.
             <br />
