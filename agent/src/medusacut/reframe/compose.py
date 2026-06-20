@@ -60,37 +60,39 @@ def render_facecam_layout(
 
     os.makedirs(cache_dir, exist_ok=True)
     game_h = TARGET_H - facecam_h
-
-    # Pass 1: painel de gameplay (reframe dinamico) em 1080 x game_h.
     base = os.path.splitext(os.path.basename(out_path))[0]
-    panel = os.path.join(cache_dir, f"{base}.panel.mp4")
+
+    # UMA passada: a fonte e decodificada 1x e split em 3 (fundo borrado, facecam,
+    # gameplay dinamico) — antes eram 2 passadas decodificando a fonte 60fps 2x +
+    # um encode intermediario do painel.
+    from medusacut.render.ffmpeg import dynamic_panel_segment
+
     plan = layouts.build_plan(
         media, candidate, dynamic=dynamic, facecam_corner=facecam_corner,
         facecam_box=rect, target_w=TARGET_W, target_h=game_h, cuts=cuts,
     )
-    from medusacut.render import ffmpeg as render
+    panel = dynamic_panel_segment(
+        plan, src_label="gsrc", out_label="game",
+        sendcmd_path=os.path.join(cache_dir, f"{base}.panel.sendcmd"),
+    )
 
-    render.render_clip(media, candidate, plan, panel, cache_dir=cache_dir)
-
-    # Pass 2: compoe fundo borrado + facecam (cima) + painel (baixo).
     cw = int(rect[2] * media.width) - int(rect[0] * media.width)
     ch = int(rect[3] * media.height) - int(rect[1] * media.height)
     cx = int(rect[0] * media.width)
     cy = int(rect[1] * media.height)
     filtergraph = (
-        "[0:v]split=2[bg][cam];"
+        "[0:v]split=3[bg][cam][gsrc];"
         f"{_blurred_bg('bg', 'bgb')};"
         f"[cam]crop={cw}:{ch}:{cx}:{cy},"
         f"scale={TARGET_W}:{facecam_h}:force_original_aspect_ratio=decrease[camS];"
         f"[bgb][camS]overlay=x=(W-w)/2:y=({facecam_h}-h)/2[mid];"
-        f"[1:v]scale={TARGET_W}:{game_h}[game];"
+        f"{panel};"
         f"[mid][game]overlay=x=0:y={facecam_h}[outv]"
     )
     dur = max(0.0, candidate.end - candidate.start)
     cmd = [
         "ffmpeg", "-y",
         "-ss", f"{candidate.start:.3f}", "-t", f"{dur:.3f}", "-i", media.path,
-        "-i", panel,
         "-filter_complex", filtergraph,
         "-map", "[outv]", "-map", "0:a?",
         "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",

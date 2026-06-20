@@ -51,6 +51,36 @@ def render_clip(
     return out_path
 
 
+def dynamic_panel_segment(
+    plan: ReframePlan,
+    *,
+    src_label: str,
+    out_label: str,
+    sendcmd_path: str,
+    crop_name: str = "g",
+) -> str:
+    """Segmento de `filter_complex` do painel de gameplay (crop dinamico + scale),
+    pra compor o layout facecam em UMA passada (sem render intermediario em disco).
+
+    Usa um crop NOMEADO (`crop@<crop_name>`) e um sendcmd que targeta so ele, pra o
+    panning nao colidir com o outro crop (facecam) do mesmo grafo. `[src_label]` ->
+    `[out_label]`."""
+    x0 = plan.keyframes[0][1]
+    scale = f"scale={plan.target_w}:{plan.target_h}"
+    if not plan.is_dynamic:
+        return (
+            f"[{src_label}]crop={plan.crop_w}:{plan.crop_h}:{x0:.1f}:0,{scale}[{out_label}]"
+        )
+    os.makedirs(os.path.dirname(sendcmd_path) or ".", exist_ok=True)
+    target = f"crop@{crop_name}"
+    with open(sendcmd_path, "w", encoding="utf-8") as fh:
+        fh.write("\n".join(f"{t:.3f} {target} x {x:.1f};" for t, x in plan.keyframes) + "\n")
+    return (
+        f"[{src_label}]sendcmd=f='{sendcmd_path}',"
+        f"{target}={plan.crop_w}:{plan.crop_h}:{x0:.1f}:0,{scale}[{out_label}]"
+    )
+
+
 def _build_filter(plan: ReframePlan, out_path: str, cache_dir: str | None) -> str:
     """Monta o -vf: crop (+ sendcmd se dinamico) e scale pro 9:16 final."""
     x0 = plan.keyframes[0][1]
