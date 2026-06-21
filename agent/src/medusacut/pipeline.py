@@ -241,10 +241,23 @@ def render_candidates(
         nomes de arquivo/cache derivam de `clip_NN`, sem colisao entre threads."""
         file_name = f"clip_{idx:02d}.mp4"
         out_path = os.path.join(out_dir, file_name)
-        _render_layout(media, cand, layout_name, facecam_corner, out_path, cache_dir,
-                       facecam_box=facecam_box)
+        # Legenda: monta a faixa transparente ANTES e funde no render (1 encode so).
+        caption_track = None
         if captions and words:
-            _burn_captions(out_path, words, cand, cache_dir, caption_y)
+            import sys as _sys
+
+            from medusacut.caption import karaoke
+            in_range = [w for w in words if w.end > cand.start and w.start < cand.end]
+            try:
+                caption_track = karaoke.build_caption_track(
+                    in_range, clip_start=cand.start, clip_dur=cand.end - cand.start,
+                    out_dir=os.path.join(cache_dir, f"{os.path.splitext(file_name)[0]}_cap"),
+                    y_frac=caption_y,
+                )
+            except Exception as exc:  # legenda nao deve derrubar o corte
+                print(f"[medusacut] sem legenda em {file_name}: {exc}", file=_sys.stderr)
+        _render_layout(media, cand, layout_name, facecam_corner, out_path, cache_dir,
+                       facecam_box=facecam_box, caption_track=caption_track)
         return Clip(
             index=idx, start=cand.start, end=cand.end, score=cand.score, file=file_name,
             hook=hook.hook if hook else "",
@@ -572,33 +585,6 @@ def _fit_moment(
     return rs, re_
 
 
-def _burn_captions(out_path, words, cand, cache_dir, caption_y=0.80):
-    """Queima a legenda karaoke no clipe ja renderizado (substitui no lugar)."""
-    import os as _os
-    import sys
-
-    from medusacut.caption import karaoke
-
-    try:
-        in_range = [w for w in words if w.end > cand.start and w.start < cand.end]
-        cap_dir = _os.path.join(cache_dir, _os.path.splitext(_os.path.basename(out_path))[0] + "_cap")
-        states = karaoke.render_caption_images(
-            in_range, clip_start=cand.start, clip_dur=cand.end - cand.start,
-            out_dir=cap_dir, y_frac=caption_y,
-        )
-        if not states:
-            return
-        tmp = out_path + ".cap.mp4"
-        karaoke.burn(out_path, states, tmp)
-        _os.replace(tmp, out_path)
-    except Exception as exc:  # legenda nao deve derrubar o corte ja renderizado
-        print(f"[medusacut] sem legenda em {_os.path.basename(out_path)}: {exc}", file=sys.stderr)
-        try:  # nao deixa o .cap.mp4 0-byte sujando a pasta
-            _os.remove(out_path + ".cap.mp4")
-        except OSError:
-            pass
-
-
 def _resolve_layout(layout: str, facecam_corner: str | None, facecam_auto: bool = False) -> str:
     """SO 2 layouts: (A) facecam no terco superior — quando ha canto manual ou
     auto-deteccao; ou (B) gameplay tela cheia com blur. Se A for pedido mas a
@@ -618,18 +604,21 @@ def _render_layout(
     cache_dir: str,
     *,
     facecam_box: tuple[float, float, float, float] | None = None,
+    caption_track: str | None = None,
 ) -> None:
     """Despacha o render: SO 2 layouts. (A) facecam no terco superior + gameplay, ou
-    (B) gameplay tela cheia com blur (foco 100% na acao)."""
+    (B) gameplay tela cheia com blur (foco 100% na acao). A legenda (se houver) e
+    fundida no mesmo encode via `caption_track`."""
     from medusacut.reframe import compose
 
     if layout_name == "facecam_top_gameplay_bottom":
         compose.render_facecam_layout(
             media, candidate, facecam_corner=facecam_corner,
             out_path=out_path, cache_dir=cache_dir, facecam_box=facecam_box,
+            caption_track=caption_track,
         )
     else:  # gameplay_blur (e qualquer outro caindo no padrao seguro)
-        compose.render_blur_fit(media, candidate, out_path=out_path)
+        compose.render_blur_fit(media, candidate, out_path=out_path, caption_track=caption_track)
 
 
 def _report(progress: Progress | None, frac: float, label: str) -> None:

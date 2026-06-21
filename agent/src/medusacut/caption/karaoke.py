@@ -156,55 +156,43 @@ def _write_blank(path: str) -> None:
         Image.new("RGBA", (W, H), (0, 0, 0, 0)).save(path)
 
 
-def burn(clip_path: str, states: list[tuple[float, float, str]], out_path: str) -> str:
-    """Queima a legenda compondo UMA faixa transparente (alpha) e fazendo UM overlay.
-
-    A versao antiga passava 1 input `-i` por PALAVRA pro ffmpeg + uma cadeia de N
-    overlays — em corte longo (centenas de palavras) isso estourava o limite de
-    inputs/descritores do ffmpeg ("Resource temporarily unavailable") e o corte saia
-    SEM legenda. Aqui montamos uma faixa de legenda no tempo (concat das PNGs com
-    duracao, e PNG transparente nos silencios) e compomos com um unico overlay —
-    escala pra qualquer duracao, com 2 passadas baratas.
-    """
-    if not states:
-        raise ValueError("sem estados de legenda pra queimar")
-
-    work = os.path.dirname(states[0][2]) or os.path.dirname(out_path) or "."
-    os.makedirs(work, exist_ok=True)
-    blank = os.path.join(work, "_blank.png")
+def _concat_track(states: list[tuple[float, float, str]], out_dir: str) -> str:
+    """Monta a faixa de legenda transparente (alpha .mov) a partir dos estados:
+    cada PNG pela sua duracao, PNG transparente nos silencios. Uma passada barata."""
+    blank = os.path.join(out_dir, "_blank.png")
     _write_blank(blank)
-
-    # 1) lista do concat: PNG de cada palavra pela sua duracao; transparente nos gaps.
     lines: list[str] = []
     prev = 0.0
     for t0, t1, png in states:
-        if t0 - prev > 1e-3:  # silencio antes desta palavra -> transparente
+        if t0 - prev > 1e-3:
             lines.append(f"file '{blank}'")
             lines.append(f"duration {t0 - prev:.3f}")
         lines.append(f"file '{png}'")
         lines.append(f"duration {max(0.001, t1 - t0):.3f}")
         prev = t1
     lines.append(f"file '{blank}'")  # entrada final (concat ignora a duracao do ultimo)
-    list_path = os.path.join(work, "_caption_track.txt")
+    list_path = os.path.join(out_dir, "_caption_track.txt")
     with open(list_path, "w", encoding="utf-8") as fh:
         fh.write("\n".join(lines) + "\n")
-
-    # 2) faixa de legenda transparente (qtrle preserva alpha; ffmpeg minimo tem).
-    track = os.path.join(work, "_caption_track.mov")
+    track = os.path.join(out_dir, "_caption_track.mov")
     _run([
         "ffmpeg", "-y", "-loglevel", "error",
         "-f", "concat", "-safe", "0", "-i", list_path,
         "-vsync", "vfr", "-pix_fmt", "argb", "-c:v", "qtrle", track,
     ])
+    return track
 
-    # 3) UM overlay da faixa sobre o clipe.
-    _run([
-        "ffmpeg", "-y", "-loglevel", "error",
-        "-i", clip_path, "-i", track,
-        "-filter_complex", "[0:v][1:v]overlay=0:0[outv]",
-        "-map", "[outv]", "-map", "0:a?",
-        "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
-        "-pix_fmt", "yuv420p", "-c:a", "copy",
-        out_path,
-    ])
-    return out_path
+
+def build_caption_track(
+    words: list[Word], *, clip_start: float, clip_dur: float, out_dir: str,
+    y_frac: float = Y_CENTER_FRAC,
+) -> str | None:
+    """Faixa de legenda alpha pronta pra UM overlay no render (sem 2o encode).
+    Retorna o caminho da faixa .mov, ou None se nao ha legenda."""
+    os.makedirs(out_dir, exist_ok=True)
+    states = render_caption_images(
+        words, clip_start=clip_start, clip_dur=clip_dur, out_dir=out_dir, y_frac=y_frac,
+    )
+    if not states:
+        return None
+    return _concat_track(states, out_dir)

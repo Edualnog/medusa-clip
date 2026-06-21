@@ -104,6 +104,28 @@ def _blurred_bg(src: str, out: str) -> str:
 PANEL_H = TARGET_H // 3  # 640 = terco superior (par)
 
 
+def _finalize(media, candidate, main_graph: str, caption_track: str | None, out_path: str) -> None:
+    """`main_graph` termina em [base]. Se houver `caption_track` (faixa alpha da
+    legenda), faz UM overlay dela por cima e encoda — tudo numa passada (evita o 2o
+    encode que a legenda fazia separada). Sem faixa, so passa adiante."""
+    dur = max(0.0, candidate.end - candidate.start)
+    inputs = ["-ss", f"{candidate.start:.3f}", "-t", f"{dur:.3f}", "-i", media.path]
+    if caption_track:
+        inputs += ["-i", caption_track]
+        fg = main_graph + ";[base][1:v]overlay=0:0[outv]"
+    else:
+        fg = main_graph + ";[base]null[outv]"
+    cmd = [
+        "ffmpeg", "-y", *inputs,
+        "-filter_complex", fg,
+        "-map", "[outv]", "-map", "0:a?",
+        "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
+        "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "160k",
+        "-movflags", "+faststart", out_path,
+    ]
+    _run(cmd, out_path)
+
+
 def render_facecam_layout(
     media: Media,
     candidate: Candidate,
@@ -112,6 +134,7 @@ def render_facecam_layout(
     out_path: str,
     cache_dir: str = ".",
     facecam_box: tuple[float, float, float, float] | None = None,
+    caption_track: str | None = None,
     **_ignored,
 ) -> str:
     """Layout A: facecam FIT-centralizada no terco superior (laterais com blur) +
@@ -146,19 +169,9 @@ def render_facecam_layout(
         f"crop={TARGET_W}:{game_h}[gameS];"
         # compoe sobre o blur: cam centralizado no topo + game embaixo
         f"[bgb][camS]overlay=x=(W-w)/2:y=({panel_h}-h)/2[mid];"
-        f"[mid][gameS]overlay=x=0:y={panel_h}[outv]"
+        f"[mid][gameS]overlay=x=0:y={panel_h}[base]"
     )
-    dur = max(0.0, candidate.end - candidate.start)
-    cmd = [
-        "ffmpeg", "-y",
-        "-ss", f"{candidate.start:.3f}", "-t", f"{dur:.3f}", "-i", media.path,
-        "-filter_complex", filtergraph,
-        "-map", "[outv]", "-map", "0:a?",
-        "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
-        "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "160k",
-        "-movflags", "+faststart", out_path,
-    ]
-    _run(cmd, out_path)
+    _finalize(media, candidate, filtergraph, caption_track, out_path)
     return out_path
 
 
@@ -192,25 +205,17 @@ def render_face_fullscreen(
     return out_path
 
 
-def render_blur_fit(media: Media, candidate: Candidate, *, out_path: str) -> str:
+def render_blur_fit(
+    media: Media, candidate: Candidate, *, out_path: str, caption_track: str | None = None,
+) -> str:
     """Gameplay inteiro (sem crop) encaixado sobre fundo desfocado."""
     filtergraph = (
         "[0:v]split=2[bg][fg];"
         f"{_blurred_bg('bg', 'bgb')};"
         f"[fg]scale={TARGET_W}:{TARGET_H}:force_original_aspect_ratio=decrease[fgs];"
-        "[bgb][fgs]overlay=x=(W-w)/2:y=(H-h)/2[outv]"
+        "[bgb][fgs]overlay=x=(W-w)/2:y=(H-h)/2[base]"
     )
-    dur = max(0.0, candidate.end - candidate.start)
-    cmd = [
-        "ffmpeg", "-y",
-        "-ss", f"{candidate.start:.3f}", "-t", f"{dur:.3f}", "-i", media.path,
-        "-filter_complex", filtergraph,
-        "-map", "[outv]", "-map", "0:a?",
-        "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
-        "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "160k",
-        "-movflags", "+faststart", out_path,
-    ]
-    _run(cmd, out_path)
+    _finalize(media, candidate, filtergraph, caption_track, out_path)
     return out_path
 
 
