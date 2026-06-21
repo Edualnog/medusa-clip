@@ -14,6 +14,9 @@ dependencies = [
     "numpy==2.4.6",
     "openai==2.42.0",         # ganchos via LLM: OpenRouter + OpenAI (API compat. OpenAI)
     "anthropic>=0.40,<2",     # ganchos via LLM: Claude (SDK nativo; API != OpenAI)
+    # Transcricao na GPU/Neural Engine do Mac (~3-4x vs CPU). SO Apple Silicon — no
+    # resto usa faster-whisper (e fallback se o MLX falhar no binario empacotado).
+    "mlx-whisper; sys_platform == 'darwin' and platform_machine == 'arm64'",
     "pillow==12.2.0",         # legenda karaoke (desenho); ffmpeg local nao tem libass
     "supabase==2.31.0",       # worker: fila de jobs (SaaS)
     "cryptography==49.0.0",   # worker: decifra a chave de API do usuario (AES-GCM)

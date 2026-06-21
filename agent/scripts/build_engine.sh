@@ -44,12 +44,24 @@ PY
 # ATENÇÃO: `av` (PyAV) NÃO pode sair — o faster-whisper usa PyAV pra DECODIFICAR o
 # áudio na transcrição (testado: sem ele, "No module named 'av'" e cortes sem legenda).
 # Sempre revisar este enxugamento ao mexer em transcribe/scene/reframe.
+
+# MLX (transcricao na GPU do Mac): so existe em Apple Silicon. Se instalado, bundla
+# (inclui os .metallib via collect-all). Em Windows/Linux nao existe -> sem flag.
+MLX_FLAGS=()
+if "$PYBIN" -c "import mlx_whisper" 2>/dev/null; then
+  MLX_FLAGS=(--collect-all mlx_whisper --collect-all mlx)
+  echo "MLX detectado -> bundlando (transcricao GPU no Mac)"
+fi
+
 "$PYBIN" -m PyInstaller --noconfirm --onedir --name medusacut-engine \
   --collect-all faster_whisper --collect-all ctranslate2 --collect-all av \
   --collect-all cv2 --collect-all yt_dlp --collect-all tokenizers \
-  --collect-all huggingface_hub --collect-all anthropic --collect-submodules medusacut \
+  --collect-all huggingface_hub --collect-all anthropic "${MLX_FLAGS[@]}" \
+  --collect-submodules medusacut \
   --exclude-module onnxruntime \
   --exclude-module boto3 --exclude-module botocore \
+  --exclude-module torch --exclude-module torchaudio --exclude-module torchvision \
+  --exclude-module sympy --exclude-module networkx \
   "$ENTRY"
 
 echo "OK -> dist/medusacut-engine/"

@@ -1,21 +1,51 @@
-"""Transcricao com timestamps por palavra (faster-whisper).
+"""Transcricao com timestamps por palavra.
 
-Interface fina de proposito: da pra trocar por whisper.cpp/mlx-whisper depois sem
-mexer no pipeline. Em Apple Silicon roda em CPU (int8); a 1a chamada baixa o
-modelo do HuggingFace (uma vez so).
+DOIS backends:
+- **MLX** (Apple Silicon): roda na GPU/Neural Engine via `mlx-whisper` — ~3-4x mais
+  rapido que CPU. Usado automaticamente em Mac arm64 quando disponivel.
+- **faster-whisper** (ctranslate2, CPU): padrao no resto (Windows/Linux/Intel) e
+  FALLBACK se o MLX falhar (ex.: nao bundlado/erro de Metal no binario empacotado).
 
-`faster_whisper` importado DENTRO das funcoes (dep pesada).
+Override do backend: `MEDUSA_WHISPER_BACKEND=mlx|faster|auto` (default auto).
+Deps pesadas importadas DENTRO das funcoes. 1a chamada baixa o modelo (uma vez).
 """
 
 from __future__ import annotations
 
 import os
 import subprocess
+import sys
 import tempfile
 
 from medusacut.types import Word
 
 _MODEL_CACHE: dict[tuple[str, str], object] = {}
+
+# faster-whisper usa nomes curtos ("base"); o MLX usa repos do HuggingFace.
+_MLX_REPOS = {
+    "tiny": "mlx-community/whisper-tiny-mlx",
+    "base": "mlx-community/whisper-base-mlx",
+    "small": "mlx-community/whisper-small-mlx",
+    "medium": "mlx-community/whisper-medium-mlx",
+    "large-v3": "mlx-community/whisper-large-v3-mlx",
+    "large-v3-turbo": "mlx-community/whisper-large-v3-turbo",
+}
+
+
+def _use_mlx() -> bool:
+    """MLX so faz sentido em Apple Silicon e quando o pacote esta disponivel."""
+    backend = os.environ.get("MEDUSA_WHISPER_BACKEND", "auto").strip().lower()
+    if backend == "faster":
+        return False
+    if backend == "mlx":
+        return True
+    import platform  # noqa: PLC0415
+
+    if platform.system() != "Darwin" or platform.machine() != "arm64":
+        return False
+    import importlib.util  # noqa: PLC0415
+
+    return importlib.util.find_spec("mlx_whisper") is not None
 
 
 def _get_model(model_size: str, compute_type: str):
@@ -37,8 +67,7 @@ def transcribe_segment(
     compute_type: str = "int8",
 ) -> list[Word]:
     """Transcreve [start, end] do audio e devolve palavras com tempos ABSOLUTOS."""
-    # Default "base": ~4-5x mais rapido que "small" em CPU e a qualidade basta pro
-    # roteiro/legenda (decidido em testes). Quem quiser mais precisao: WHISPER_MODEL=small.
+    # Default "base": rapido e a qualidade basta pro roteiro/legenda. WHISPER_MODEL muda.
     model_size = model_size or os.environ.get("WHISPER_MODEL", "base")
     language = language or os.environ.get("WHISPER_LANG") or None
 
@@ -57,25 +86,52 @@ def transcribe_segment(
         if proc.returncode != 0:
             raise RuntimeError(f"ffmpeg falhou ao recortar audio: {proc.stderr.strip()}")
 
-        model = _get_model(model_size, compute_type)
-        # beam_size=1 (greedy) + sem condicionar no texto anterior: ~1.5x mais rapido
-        # em CPU, sem perda relevante p/ fala de gameplay (e evita loops de repeticao).
-        segments, _info = model.transcribe(
-            tmp.name,
-            word_timestamps=True,
-            language=language,
-            beam_size=1,
-            condition_on_previous_text=False,
-        )
-
-        words: list[Word] = []
-        for seg in segments:
-            for w in seg.words or []:
-                words.append(Word(text=w.word.strip(), start=start + w.start, end=start + w.end))
-        return words
+        if _use_mlx():
+            try:
+                return _transcribe_mlx(tmp.name, start, model_size, language)
+            except Exception as exc:  # noqa: BLE001 — nunca derruba; cai pro CPU
+                print(f"[medusacut] MLX falhou ({exc}); usando faster-whisper", file=sys.stderr)
+        return _transcribe_faster(tmp.name, start, model_size, language, compute_type)
     finally:
         if os.path.exists(tmp.name):
             os.remove(tmp.name)
+
+
+def _transcribe_faster(wav: str, start: float, model_size: str, language, compute_type: str) -> list[Word]:
+    """Backend CPU (faster-whisper/ctranslate2). beam_size=1 (greedy) + sem condicionar
+    no texto anterior: mais rapido em CPU, sem perda relevante p/ fala de gameplay."""
+    model = _get_model(model_size, compute_type)
+    segments, _info = model.transcribe(
+        wav, word_timestamps=True, language=language,
+        beam_size=1, condition_on_previous_text=False,
+    )
+    words: list[Word] = []
+    for seg in segments:
+        for w in seg.words or []:
+            words.append(Word(text=w.word.strip(), start=start + w.start, end=start + w.end))
+    return words
+
+
+def _transcribe_mlx(wav: str, start: float, model_size: str, language) -> list[Word]:
+    """Backend Apple Silicon (mlx-whisper, GPU/Neural Engine). Tempos relativos ao
+    recorte -> somamos `start` p/ ficarem absolutos, igual ao faster-whisper."""
+    import mlx_whisper  # noqa: PLC0415
+
+    name = model_size.split("/")[-1]
+    repo = model_size if "/" in model_size else _MLX_REPOS.get(name, _MLX_REPOS["base"])
+    opts: dict = {"path_or_hf_repo": repo, "word_timestamps": True}
+    if language:
+        opts["language"] = language
+    result = mlx_whisper.transcribe(wav, **opts)
+    words: list[Word] = []
+    for seg in result.get("segments", []):
+        for w in seg.get("words") or []:
+            words.append(Word(
+                text=str(w.get("word", "")).strip(),
+                start=start + float(w["start"]),
+                end=start + float(w["end"]),
+            ))
+    return words
 
 
 def transcript_text(words: list[Word]) -> str:
