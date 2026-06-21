@@ -28,8 +28,17 @@ def download(
     outtmpl = os.path.join(dest_dir, "%(id)s.%(ext)s")
     ydl_opts = {
         "outtmpl": outtmpl,
-        # melhor video + melhor audio, remuxado pra mp4 (ffmpeg ja instalado)
-        "format": "bv*+ba/b",
+        # PREFERE H.264 (avc1) ate 1080p. O YouTube serve AV1/VP9 em 1440p/4K no
+        # "melhor video"; AV1 NAO tem decode por hardware no ffmpeg embutido e e
+        # absurdamente lento na CPU — e o motor decodifica a fonte varias vezes
+        # (movimento, render de cada corte, keyframes). h264 1080p decodifica rapido e
+        # basta pro 9:16 (a saida e 1080x1920). Cadeia de fallback se nao houver h264.
+        "format": (
+            "bv*[vcodec^=avc1][height<=1080]+ba/"
+            "bv*[height<=1080]+ba/"
+            "b[height<=1080]/"
+            "bv*+ba/b"
+        ),
         "merge_output_format": "mp4",
         "quiet": True,
         "no_warnings": True,
