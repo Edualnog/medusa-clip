@@ -239,25 +239,39 @@ def render_candidates(
     def _render_one(idx: int, cand, hook, words) -> Clip:
         """Renderiza 1 corte (layout + legenda) -> Clip. Independente por corte:
         nomes de arquivo/cache derivam de `clip_NN`, sem colisao entre threads."""
+        import sys as _sys
+
         file_name = f"clip_{idx:02d}.mp4"
         out_path = os.path.join(out_dir, file_name)
-        # Legenda: monta a faixa transparente ANTES e funde no render (1 encode so).
+        cap_dir = os.path.join(cache_dir, f"{os.path.splitext(file_name)[0]}_cap")
+        clip_dur = cand.end - cand.start
+        # Faixas (alpha) fundidas no MESMO encode do render (1 passada): legenda + hook.
         caption_track = None
         if captions and words:
-            import sys as _sys
-
             from medusacut.caption import karaoke
             in_range = [w for w in words if w.end > cand.start and w.start < cand.end]
             try:
                 caption_track = karaoke.build_caption_track(
-                    in_range, clip_start=cand.start, clip_dur=cand.end - cand.start,
-                    out_dir=os.path.join(cache_dir, f"{os.path.splitext(file_name)[0]}_cap"),
-                    y_frac=caption_y,
+                    in_range, clip_start=cand.start, clip_dur=clip_dur,
+                    out_dir=cap_dir, y_frac=caption_y,
                 )
             except Exception as exc:  # legenda nao deve derrubar o corte
                 print(f"[medusacut] sem legenda em {file_name}: {exc}", file=_sys.stderr)
+        # Hook (manchete): nos primeiros ~5s, no topo do gameplay (abaixo da facecam).
+        hook_track = None
+        hook_text = (hook.hook if hook else "").strip()
+        if hook_text:
+            from medusacut.caption import karaoke
+            from medusacut.reframe.compose import PANEL_H
+            top_y = (PANEL_H + 36) if layout_name == "facecam_top_gameplay_bottom" else 96
+            try:
+                hook_track = karaoke.build_hook_track(
+                    hook_text, clip_dur=clip_dur, top_y=top_y, out_dir=cap_dir,
+                )
+            except Exception as exc:  # hook nao deve derrubar o corte
+                print(f"[medusacut] sem hook em {file_name}: {exc}", file=_sys.stderr)
         _render_layout(media, cand, layout_name, facecam_corner, out_path, cache_dir,
-                       facecam_box=facecam_box, caption_track=caption_track)
+                       facecam_box=facecam_box, overlays=[caption_track, hook_track])
         return Clip(
             index=idx, start=cand.start, end=cand.end, score=cand.score, file=file_name,
             hook=hook.hook if hook else "",
@@ -604,21 +618,21 @@ def _render_layout(
     cache_dir: str,
     *,
     facecam_box: tuple[float, float, float, float] | None = None,
-    caption_track: str | None = None,
+    overlays: list[str] | None = None,
 ) -> None:
     """Despacha o render: SO 2 layouts. (A) facecam no terco superior + gameplay, ou
-    (B) gameplay tela cheia com blur (foco 100% na acao). A legenda (se houver) e
-    fundida no mesmo encode via `caption_track`."""
+    (B) gameplay tela cheia com blur (foco 100% na acao). `overlays` (legenda + hook)
+    sao fundidos no mesmo encode."""
     from medusacut.reframe import compose
 
     if layout_name == "facecam_top_gameplay_bottom":
         compose.render_facecam_layout(
             media, candidate, facecam_corner=facecam_corner,
             out_path=out_path, cache_dir=cache_dir, facecam_box=facecam_box,
-            caption_track=caption_track,
+            overlays=overlays,
         )
     else:  # gameplay_blur (e qualquer outro caindo no padrao seguro)
-        compose.render_blur_fit(media, candidate, out_path=out_path, caption_track=caption_track)
+        compose.render_blur_fit(media, candidate, out_path=out_path, overlays=overlays)
 
 
 def _report(progress: Progress | None, frac: float, label: str) -> None:

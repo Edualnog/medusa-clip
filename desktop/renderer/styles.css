@@ -510,9 +510,21 @@ button:focus-visible, input:focus-visible, select:focus-visible {
 .clip-wrap { position: relative; aspect-ratio: 9 / 16; overflow: hidden; background: #000; }
 .clip-wrap video { width: 100%; height: 100%; display: block; object-fit: cover; }
 .clip-badges { position: absolute; inset: 10px 10px auto; display: flex; align-items: center; gap: 6px; pointer-events: none; }
-.clip-viral, .clip-duration { border: 1px solid var(--line-strong); background: rgba(6,6,8,.9); padding: 6px 7px 5px; font-family: var(--pixel); font-size: 6px; }
-.clip-viral { color: var(--accent); }
-.clip-duration { margin-left: auto; }
+.clip-duration { border: 1px solid var(--line-strong); background: rgba(6,6,8,.9); padding: 6px 7px 5px; font-family: var(--pixel); font-size: 6px; color: var(--fg); margin-left: auto; }
+/* Score de viralizacao: pill preenchido, colorido por faixa (verde/amarelo/vermelho) */
+.clip-viral {
+  font-family: var(--pixel);
+  font-size: 9px;
+  letter-spacing: .5px;
+  color: #0a0a0a;
+  background: var(--accent);
+  padding: 7px 9px 6px;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.5);
+}
+.clip-viral--high { background: var(--success); }  /* >=75 verde */
+.clip-viral--mid  { background: var(--accent); }   /* 50-74 amarelo */
+.clip-viral--low  { background: var(--danger); }   /* <50 vermelho */
 .clip-body { padding: 16px; }
 .clip-hook { min-height: 40px; font-family: var(--pixel); font-size: 9px; line-height: 1.55; }
 .clip-description { display: -webkit-box; overflow: hidden; margin: 10px 0 0; color: var(--muted); font-size: 17px; line-height: 1.35; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }

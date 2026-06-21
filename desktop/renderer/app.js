@@ -498,8 +498,10 @@ if (document.getElementById("libSort")) {
 }
 
 function clipCard(clip, index) {
-  const score = clip.virality_score != null
-    ? `<span class="clip-viral">SCORE ${Math.round(clip.virality_score)}</span>`
+  const sv = clip.virality_score;
+  const tier = sv == null ? "" : sv >= 75 ? "high" : sv >= 50 ? "mid" : "low";
+  const score = sv != null
+    ? `<span class="clip-viral clip-viral--${tier}">VIRAL ${Math.round(sv)}</span>`
     : "";
   const duration = clip.duration_s != null
     ? `<span class="clip-duration">${Math.round(clip.duration_s)}S</span>`

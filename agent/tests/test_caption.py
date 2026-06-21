@@ -4,12 +4,31 @@ from __future__ import annotations
 
 from pytest import approx
 
-from medusacut.caption.karaoke import group_words, word_intervals
+from medusacut.caption.karaoke import _wrap_text, group_words, word_intervals
 from medusacut.types import Word
 
 
 def _w(text, s, e):
     return Word(text=text, start=s, end=e)
+
+
+class _FakeFont:
+    """getlength proporcional ao nº de caracteres (10px/char) — testa wrap sem PIL."""
+
+    def getlength(self, s):
+        return len(s) * 10.0
+
+
+def test_wrap_text_breaks_and_uppercases():
+    lines = _wrap_text("treta insana no banheiro", _FakeFont(), 100.0)
+    assert all(ln == ln.upper() for ln in lines)            # manchete em MAIUSCULAS
+    assert " ".join(lines) == "TRETA INSANA NO BANHEIRO"     # nao perde palavra
+    assert all(_FakeFont().getlength(ln) <= 100.0 or " " not in ln for ln in lines)
+
+
+def test_wrap_text_keeps_long_word():
+    lines = _wrap_text("supercalifragilistico ok", _FakeFont(), 50.0)
+    assert lines[0] == "SUPERCALIFRAGILISTICO"  # palavra maior que a largura nao some
 
 
 def test_group_splits_by_max_words():

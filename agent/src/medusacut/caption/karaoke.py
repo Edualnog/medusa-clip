@@ -156,6 +156,88 @@ def _write_blank(path: str) -> None:
         Image.new("RGBA", (W, H), (0, 0, 0, 0)).save(path)
 
 
+# --- HOOK (manchete/titulo grande no inicio do clipe) ---
+HOOK_FONT_SIZE = 60
+HOOK_STROKE = 7
+HOOK_MAX_W = 960
+HOOK_MAX_LINES = 3
+
+
+def _wrap_text(text: str, font, max_w: float) -> list[str]:
+    """Quebra um texto em linhas que cabem em `max_w` (MAIUSCULAS, estilo manchete)."""
+    words = text.upper().split()
+    lines: list[str] = []
+    cur: list[str] = []
+    for w in words:
+        trial = " ".join(cur + [w])
+        if cur and font.getlength(trial) > max_w:
+            lines.append(" ".join(cur))
+            cur = [w]
+        else:
+            cur.append(w)
+    if cur:
+        lines.append(" ".join(cur))
+    return lines
+
+
+def render_hook_image(text: str, top_y: int, out_path: str) -> str | None:
+    """Desenha o hook (negrito, branco c/ contorno, sobre faixa escura p/ leitura) a
+    partir de `top_y`, centralizado. Retorna o PNG ou None se vazio."""
+    from PIL import Image, ImageDraw  # noqa: PLC0415
+
+    text = (text or "").strip()
+    if not text:
+        return None
+    font = _load_font(HOOK_FONT_SIZE)
+    lines = _wrap_text(text, font, HOOK_MAX_W)[:HOOK_MAX_LINES]
+    ascent, descent = font.getmetrics()
+    line_h = ascent + descent + 8
+    total_h = line_h * len(lines)
+    img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(img)
+    pad_x, pad_y = 26, 18
+    box_w = max(font.getlength(ln) for ln in lines) + pad_x * 2
+    box_x0 = (W - box_w) / 2
+    draw.rounded_rectangle(
+        [box_x0, top_y - pad_y, box_x0 + box_w, top_y + total_h + pad_y - 8],
+        radius=18, fill=(0, 0, 0, 150),
+    )
+    y = top_y
+    for ln in lines:
+        x = (W - font.getlength(ln)) / 2
+        draw.text((x, y), ln, font=font, fill=(255, 255, 255),
+                  stroke_width=HOOK_STROKE, stroke_fill=(0, 0, 0))
+        y += line_h
+    img.save(out_path)
+    return out_path
+
+
+def build_hook_track(
+    text: str, *, clip_dur: float, top_y: int, out_dir: str, hold: float = 5.0,
+) -> str | None:
+    """Faixa alpha do hook: aparece nos primeiros `hold`s e some (transparente o
+    resto). Pronta pra UM overlay no render. None se nao ha texto."""
+    os.makedirs(out_dir, exist_ok=True)
+    png = os.path.join(out_dir, "_hook.png")
+    if not render_hook_image(text, top_y, png):
+        return None
+    blank = os.path.join(out_dir, "_hook_blank.png")
+    _write_blank(blank)
+    hold = min(hold, max(0.2, clip_dur))
+    # hook por `hold`s; depois o blank (ultimo arquivo = dura ate o fim, transparente).
+    lines = [f"file '{png}'", f"duration {hold:.3f}", f"file '{blank}'"]
+    list_path = os.path.join(out_dir, "_hook_track.txt")
+    with open(list_path, "w", encoding="utf-8") as fh:
+        fh.write("\n".join(lines) + "\n")
+    track = os.path.join(out_dir, "_hook_track.mov")
+    _run([
+        "ffmpeg", "-y", "-loglevel", "error",
+        "-f", "concat", "-safe", "0", "-i", list_path,
+        "-vsync", "vfr", "-pix_fmt", "argb", "-c:v", "qtrle", track,
+    ])
+    return track
+
+
 def _concat_track(states: list[tuple[float, float, str]], out_dir: str) -> str:
     """Monta a faixa de legenda transparente (alpha .mov) a partir dos estados:
     cada PNG pela sua duracao, PNG transparente nos silencios. Uma passada barata."""

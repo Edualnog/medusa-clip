@@ -104,17 +104,22 @@ def _blurred_bg(src: str, out: str) -> str:
 PANEL_H = TARGET_H // 3  # 640 = terco superior (par)
 
 
-def _finalize(media, candidate, main_graph: str, caption_track: str | None, out_path: str) -> None:
-    """`main_graph` termina em [base]. Se houver `caption_track` (faixa alpha da
-    legenda), faz UM overlay dela por cima e encoda — tudo numa passada (evita o 2o
-    encode que a legenda fazia separada). Sem faixa, so passa adiante."""
+def _finalize(media, candidate, main_graph: str, overlays, out_path: str) -> None:
+    """`main_graph` termina em [base]. Faz overlay (0:0) de cada faixa alpha em
+    `overlays` (ex.: legenda karaoke + hook) e encoda — tudo numa passada (sem 2o
+    encode). Faixas full-canvas, entao a ordem nao importa."""
+    overlays = [t for t in (overlays or []) if t]
     dur = max(0.0, candidate.end - candidate.start)
     inputs = ["-ss", f"{candidate.start:.3f}", "-t", f"{dur:.3f}", "-i", media.path]
-    if caption_track:
-        inputs += ["-i", caption_track]
-        fg = main_graph + ";[base][1:v]overlay=0:0[outv]"
-    else:
-        fg = main_graph + ";[base]null[outv]"
+    fg = main_graph
+    label = "base"
+    for i, track in enumerate(overlays, start=1):
+        inputs += ["-i", track]
+        nxt = "outv" if i == len(overlays) else f"ov{i}"
+        fg += f";[{label}][{i}:v]overlay=0:0[{nxt}]"
+        label = nxt
+    if not overlays:
+        fg += ";[base]null[outv]"
     cmd = [
         "ffmpeg", "-y", *inputs,
         "-filter_complex", fg,
@@ -134,7 +139,7 @@ def render_facecam_layout(
     out_path: str,
     cache_dir: str = ".",
     facecam_box: tuple[float, float, float, float] | None = None,
-    caption_track: str | None = None,
+    overlays: list[str] | None = None,
     **_ignored,
 ) -> str:
     """Layout A: facecam FIT-centralizada no terco superior (laterais com blur) +
@@ -171,7 +176,7 @@ def render_facecam_layout(
         f"[bgb][camS]overlay=x=(W-w)/2:y=({panel_h}-h)/2[mid];"
         f"[mid][gameS]overlay=x=0:y={panel_h}[base]"
     )
-    _finalize(media, candidate, filtergraph, caption_track, out_path)
+    _finalize(media, candidate, filtergraph, overlays, out_path)
     return out_path
 
 
@@ -206,7 +211,7 @@ def render_face_fullscreen(
 
 
 def render_blur_fit(
-    media: Media, candidate: Candidate, *, out_path: str, caption_track: str | None = None,
+    media: Media, candidate: Candidate, *, out_path: str, overlays: list[str] | None = None,
 ) -> str:
     """Gameplay inteiro (sem crop) encaixado sobre fundo desfocado."""
     filtergraph = (
@@ -215,7 +220,7 @@ def render_blur_fit(
         f"[fg]scale={TARGET_W}:{TARGET_H}:force_original_aspect_ratio=decrease[fgs];"
         "[bgb][fgs]overlay=x=(W-w)/2:y=(H-h)/2[base]"
     )
-    _finalize(media, candidate, filtergraph, caption_track, out_path)
+    _finalize(media, candidate, filtergraph, overlays, out_path)
     return out_path
 
 
