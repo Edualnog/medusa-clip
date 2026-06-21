@@ -62,19 +62,34 @@ WEB (Next.js @ Vercel)
 
 ## Onde mora a qualidade ("nivel Opus Clip")
 
-No motor (`agent/src/medusacut/`), inalterado pela virada local-first:
+No motor (`agent/src/medusacut/`). **Prioridade: rapido E bom** — em 2026-06-21 o
+pipeline foi muito simplificado/acelerado (de ~25min p/ ~3-5min num video de 12min).
 
-1. **Analise viral multimodal + multi-modelo** (`hooks/`, `frames.py`, `llm.py`):
-   triagem barata (texto) -> juiz forte que VE keyframes -> re-rank.
-2. **Legenda karaoke** (`caption/`): queimada, palavra a palavra, estilo gamer.
-   Build de ffmpeg local sem libass/drawtext — legenda via Pillow + overlay.
-3. **Reframe** (`reframe/`): segue a acao (ciente de corte de cena), facecam
-   auto-detectado, layouts (facecam-em-cima, fundo desfocado).
-   - **Tracking** (`saliency.py`): optical flow (Farneback) + **vies de centro**
-     (mira do FPS) + **lock-on** (trava no foco; segura em frame parado). Mascara a
-     caixa do facecam (canto OU auto-detectada). Tuning em `CENTER_SIGMA`/`LOCK_BETA`.
-   - **Layout default** = `facecam_top_gameplay_bottom` **quando ha rosto**; sem rosto
-     (YuNet+VLM falham) cai pra `gameplay_blur` (tela cheia), nao faixa vazia.
+1. **Transcricao** (`transcribe/whisper.py`): default `base` + greedy (`beam_size=1`,
+   `condition_on_previous_text=False`). **DOIS backends, auto:** **MLX** (GPU/Neural
+   Engine no Mac Apple Silicon, ~3x — via `mlx-whisper`) e **faster-whisper** (CPU, ou
+   **GPU NVIDIA/CUDA** no Win/Linux quando ha libs). Fallback seguro: se MLX/CUDA
+   falhar, cai pra CPU sem quebrar. Override: `MEDUSA_WHISPER_BACKEND`, `MEDUSA_WHISPER_DEVICE`.
+2. **Analise viral multimodal + multi-modelo** (`hooks/`, `frames.py`, `llm.py`):
+   triagem barata (texto) -> juiz forte que VE keyframes -> re-rank. Chamadas de IA
+   rodam em **paralelo** (`MEDUSA_LLM_WORKERS`, default 4).
+3. **Legenda karaoke + hook** (`caption/karaoke.py`): queimadas, estilo gamer (ffmpeg
+   local sem libass/drawtext -> Pillow desenha PNGs). Compostas como **faixa alpha
+   (qtrle) + overlay unico, FUNDIDO no mesmo encode do render** (1 passada — NAO 2).
+   - Legenda: palavra a palavra (karaoke). Hook: manchete nos **primeiros ~5s**, na
+     divisa abaixo da facecam (`build_hook_track`).
+   - A versao antiga passava 1 input ffmpeg por palavra e **estourava** em corte longo
+     (cortes saiam SEM legenda) — nao voltar a esse modelo.
+4. **Reframe/layout** (`reframe/compose.py`): **SO 2 LAYOUTS** (decisao de produto;
+   sem optical-flow, sem scene-aware, sem VLM — removidos p/ velocidade/simplicidade):
+   - **A `facecam_top_gameplay_bottom`**: facecam FIT-centralizada no **terco superior**
+     (`PANEL_H`) com laterais no blur, gameplay preenchendo embaixo (cover). Igual "model 1".
+   - **B `gameplay_blur`**: gameplay tela cheia + fundo desfocado (foco 100% na acao).
+   - **Facecam**: auto-deteccao YuNet **so nos cantos superiores** (`facecam._in_top_corner`
+     — 95% dos casos; ignora rosto de NPC no meio). Achou -> A; nao achou -> B.
+   - Render dos cortes em **paralelo** (filtergraph satura pouco; `MEDUSA_RENDER_WORKERS`).
+5. **Ingest** (`ingest/youtube.py`): baixa **h264 <=1080p** (evita AV1 1440p, que o
+   ffmpeg embutido decodifica MUITO devagar — era o gargalo de ~25min).
 
 ## Monorepo
 
@@ -116,8 +131,10 @@ docs/     # SETUP.md
 ## Convencoes
 
 **Motor (Python)**: Python 3.11+, type hints, `from __future__ import annotations`.
-Deps pesadas (yt_dlp, faster_whisper, cv2, openai, PIL) importadas DENTRO das funcoes.
-Teste por capacidade nova em `agent/tests/`. Versoes pinadas.
+Deps pesadas (yt_dlp, faster_whisper, cv2, openai, anthropic, mlx_whisper, PIL)
+importadas DENTRO das funcoes. `mlx-whisper` e dep **so do Mac arm64** (marker no
+pyproject); `build_engine.sh` so bundla MLX se presente e EXCLUI `torch` (mlx declara
+mas nao usa em runtime — senao +688MB). Teste por capacidade nova em `agent/tests/`.
 
 **Desktop (Electron)**: `main.js` (nodejs, processo principal) fala com o motor por
 `spawn` + JSON; `renderer/` e UI pura (HTML/CSS/JS, sem framework). CSP travada;
@@ -149,6 +166,16 @@ dono passo a passo** no deploy (ver `docs/SETUP.md`).
 - [x] Multi-provedor de IA (BYO key): OpenRouter, OpenAI e Anthropic. Seletor de provedor
       na aba Chaves API; chave salva por provedor; validacao por provedor (sem custo);
       motor (`llm.py`) dispatcha por `LLM_PROVIDER` (OpenAI-compat vs SDK nativo Anthropic).
+- [x] **Performance (v0.1.15-0.1.17, ~25min -> ~3-5min num video de 12min):** download
+      h264 <=1080p (mata o AV1 1440p); transcricao MLX (GPU Mac, ~3x) / CUDA (GPU Win) /
+      CPU fallback; legenda fundida no render (1 encode); IA viral e render em PARALELO.
+- [x] **Layout v0.1.14: 2 modelos** (facecam terco superior + blur / foco na acao tela
+      cheia); facecam so nos cantos superiores; removido scene-aware/VLM/optical-flow.
+- [x] **Hook queimado** no clipe (manchete, primeiros ~5s) + **score de viralizacao
+      colorido por faixa** no card (v0.1.19).
+- [x] App: **player do clipe DENTRO do app** (modal) + preview no hover (URL por id,
+      `zclip://clip/<id>`) + ordenacao da biblioteca + progresso animado + icone GitHub +
+      "baixar e instalar" no Mac (baixa+abre o .dmg).
 - [x] Seguranca: chave de IA (por provedor) e tokens de sessao **cifrados** no disco via
       `safeStorage` (migra config antigo em texto puro). Fallback texto puro no
       Linux sem keyring (flag `secretsPlaintext`).
@@ -157,6 +184,10 @@ dono passo a passo** no deploy (ver `docs/SETUP.md`).
       revisao juridica dos textos legais; rotacao dos segredos cloud antigos (R2/service_role).
 - [ ] Liberar instaladores assinados por plataforma (mac/win/linux — target Linux
       AppImage ja configurado no electron-builder).
+- [ ] **GPU no Windows "de fabrica" (NVIDIA):** o codigo ja usa CUDA se as libs
+      (cuBLAS/cuDNN) existirem, mas pra funcionar sem o usuario instalar nada precisa
+      entregar a cuDNN — sem wheel limpo p/ Windows + licenca NVIDIA + **precisa de
+      maquina Windows+NVIDIA pra validar** (nem o CI tem GPU). Pendente de hardware de teste.
 - [ ] Monetizacao futura (modelo a definir) — **NAO** ha assinatura/cobranca; app gratis.
 - [ ] Deploy completo (Vercel + distribuicao dos builds) e onboarding.
 

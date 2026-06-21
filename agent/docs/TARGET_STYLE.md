@@ -17,12 +17,17 @@ principal em 2026-06-19. Vertical 9:16, gameplay de FPS tático com facecam.
 | Elemento | Na referência (model 1) | Default atual no motor | Bate? |
 |---|---|---|---|
 | Canvas | vertical 9:16 | `1080×1920` (`compose.TARGET_W/H`, `karaoke.W/H`) | ✅ |
-| Layout | facecam retangular no topo, gameplay embaixo | `facecam_top_gameplay_bottom` | ✅ |
-| Altura do facecam | faixa superior ≈ 1/3 da altura | `FACECAM_H = 640` (≈33% de 1920) | ✅ |
-| Facecam | rosto centralizado, crop limpo | `overlay` centralizado na faixa | ✅ |
-| Gameplay | preenche o resto, sem barras | `scale=...:increase` (preenche) | ✅ |
+| Layout | facecam no topo, gameplay embaixo | `facecam_top_gameplay_bottom` (Layout A) | ✅ |
+| Altura do facecam | faixa superior ≈ 1/3 da altura | `PANEL_H = 640` (terço superior) | ✅ |
+| Facecam | rosto centralizado, laterais desfocadas | FIT-centralizado no painel + blur nas laterais | ✅ |
+| Gameplay | preenche o resto, sem barras | `scale=...:increase` + crop (cover) | ✅ |
 | Posição da legenda | terço inferior (~75–80% da altura) | `caption_y = 0.80` / `Y_CENTER_FRAC = 0.80` | ✅ |
+| Hook (manchete) | título grande no início | `build_hook_track`: negrito na divisa abaixo da facecam, primeiros ~5s | ✅ (novo) |
 | Estilo da legenda | sentence-case, branca, em caixa preta sólida | CAIXA ALTA, Impact, contorno preto, palavra ativa amarela (karaokê) | ➖ **divergência intencional** (ver abaixo) |
+
+> **2 layouts só** (2026-06-21): além do A (acima), quando NÃO há facecam usa-se o
+> Layout B `gameplay_blur` (gameplay tela cheia + fundo desfocado). Removidos os
+> layouts antigos (scene-aware/dynamic/optical-flow).
 
 ## Escopo da referência: layout, NÃO legenda
 
@@ -39,7 +44,10 @@ a model 1.
 
 ## Onde isto vive no código
 
-- Layout / facecam: `src/medusacut/reframe/compose.py` (`render_facecam_layout`, `FACECAM_H`).
-- Resolução do layout default: `pipeline._resolve_layout` (`facecam_top_gameplay_bottom`).
-- Legenda: `src/medusacut/caption/karaoke.py` (fonte, cor, stroke, `Y_CENTER_FRAC`).
-- Detecção de facecam (pra ativar o split): `reframe/facecam.py` + `facecam_vlm.py`.
+- Layout / facecam: `src/medusacut/reframe/compose.py` (`render_facecam_layout`, `PANEL_H`,
+  `render_blur_fit`). Render funde legenda+hook no mesmo encode (`_finalize`).
+- Resolução do layout (só 2): `pipeline._resolve_layout` (A `facecam_top_gameplay_bottom` / B `gameplay_blur`).
+- Legenda + hook: `src/medusacut/caption/karaoke.py` (fonte, cor, stroke, `Y_CENTER_FRAC`,
+  `build_hook_track`/`render_hook_image`).
+- Detecção de facecam (ativa o Layout A): `reframe/facecam.py` — YuNet **só nos cantos
+  superiores** (`_in_top_corner`). O fallback VLM foi removido.

@@ -84,14 +84,15 @@ vai pro Storage.
 
 ## Ordem recomendada
 
-1. Supabase: rodar `0001` + pegar as chaves. ✅ (você faz isso agora)
-2. Web local funcionando (salvar a chave da OpenRouter na aba Chaves API).
-3. **Fase 3** (eu codo): jobs + worker. Aí montamos a VPS juntos.
-4. Fase 4: biblioteca + progresso. Fase 5: assinatura. Fase 6: deploy final.
+1. Supabase: rodar `0001` + pegar as chaves (conta/auth + `legal_acceptances`).
+2. App desktop: salvar a chave de IA (OpenRouter/OpenAI/Anthropic) na aba Chaves API.
 
-> Resumo da segurança: a chave da OpenRouter do usuário fica **cifrada (AES-256)**
-> no Supabase, com RLS negando acesso direto; só o servidor (web e worker, com o
-> `service_role` + `KEY_ENCRYPTION_SECRET`) decifra. O navegador nunca vê o valor.
+> ⚠️ **Legado:** os passos abaixo sobre "jobs + worker + VPS" e "chave cifrada no
+> Supabase" são do desenho **cloud abandonado** (pré local-first) — NÃO valem mais.
+>
+> Realidade atual: a chave de IA fica **cifrada no DISPOSITIVO do usuário** (`safeStorage`
+> — Keychain/DPAPI/libsecret), **nunca** sai pro Supabase, e vai direto pro provedor.
+> Não há VPS/worker; todo o processamento de vídeo é local.
 
 ---
 

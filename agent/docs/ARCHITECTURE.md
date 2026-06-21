@@ -1,41 +1,45 @@
-# Medusa Cut — Arquitetura (ferramenta pessoal)
+# Medusa Cut — Arquitetura do MOTOR
 
-> Tool pessoal e local. Um usuario, uma maquina, CLI. **Sem** SaaS, sem nuvem.
+> Motor de cortes (`medusacut`). Roda **100% local** — empacotado como binario dentro
+> do app desktop **Medusa Clip** (Electron). Sem SaaS, sem processamento na nuvem.
+> Entrypoints: `cli.py` (CLI), `local.py` (chamado pelo Electron, progresso em JSON).
 
 ## Principio
 
-Toda a complexidade de SaaS (auth, fila, workers, banco, storage, billing,
-multi-tenant) existe por causa de "outras pessoas". Sendo so para o dono, nada
-disso entra. O produto e o **motor + um CLI bom**, e o esforco vai pra qualidade.
+O produto e o **motor**; o esforco vai pra **qualidade E velocidade**. Local-first:
+nenhum video sai do PC do usuario (so a analise de IA, pela chave dele). Em 2026-06-21
+o pipeline foi muito simplificado/acelerado (~25min -> ~3-5min num video de 12min).
 
 ## Fluxo
 
 ```
-link YouTube
-  → ingest (yt-dlp: video [+ chat replay se houver])
+arquivo local OU link
+  → ingest (yt-dlp: baixa h264 <=1080p — evita AV1 1440p, lento de decodar)
   → preprocess (ffmpeg: audio, fps, dimensoes)
-  → transcribe (whisper: timestamps por palavra)   [sinal secundario]
-  → sinais (audio_energy + scene_change [+ chat_velocity])
-  → fusao (premia coincidencia) → top-N candidatos
-  → GANCHO + score de viralizacao (LLM forte)       [define o nivel Opus Clip]
-  → reframe/composicao 9:16 (facecam + acao)
-  → render (ffmpeg) + legenda karaoke
-  → out/clip_NN.mp4 + out/manifest.json
+  → transcribe (MLX/GPU no Mac · CUDA/GPU no Win · faster-whisper/CPU; base+greedy)
+  → sinais (audio_energy + motion) → fusao → candidatos (+ propostas do roteiro/LLM)
+  → analise viral 2 etapas EM PARALELO: triagem barata (texto) → juiz forte (ve keyframes)
+     → GANCHO + score de viralizacao 0-100                [define o nivel Opus Clip]
+  → deteccao de facecam (YuNet, so cantos superiores) -> escolhe 1 de 2 layouts
+  → render 9:16 EM PARALELO + legenda karaoke + HOOK (manchete ~5s) no MESMO encode
+  → <out>/clip_NN.mp4 + <out>/manifest.json
 ```
 
 ## Responsabilidade por modulo
 
 | Modulo | Faz |
 |---|---|
-| `ingest/youtube` | baixa o video e, se for VOD de live, o chat replay |
-| `transcribe` | texto + timestamps por palavra (p/ legenda e gancho) |
-| `signals` | cada sinal vira uma trilha de score no tempo |
+| `ingest/youtube` | baixa o video (formato h264 <=1080p) |
+| `transcribe/whisper` | texto + timestamps por palavra; backend MLX/CUDA/CPU (auto+fallback) |
+| `signals` | audio_energy + motion → trilhas de score no tempo |
 | `signals/fusion` | combina trilhas ponderadas → candidatos |
-| `hooks` | gera gancho/titulo + score de viralizacao por candidato |
-| `reframe` | detecta facecam, compoe layout 9:16 |
-| `caption` | legenda karaoke queimada estilo gamer |
-| `render` | montagem final via ffmpeg |
-| `pipeline` | orquestra tudo; escreve out/ + manifest |
+| `hooks` | triagem (texto) + juiz multimodal: gancho + score 0-100 (chamadas paralelas) |
+| `frames` | extrai keyframes p/ o juiz VER a cena |
+| `reframe/compose` | **2 layouts**: facecam-terco-superior+blur · gameplay tela cheia+blur |
+| `reframe/facecam` | detecta facecam (YuNet) so nos cantos superiores |
+| `caption/karaoke` | legenda karaoke + hook → faixa alpha, fundida no encode do render |
+| `render/ffmpeg` | (legado) plano de crop dinamico — nao usado pelos 2 layouts atuais |
+| `pipeline` | orquestra tudo; render paralelo; escreve out/ + manifest |
 
 ## Por que da pra chegar no nivel Opus Clip
 
@@ -43,14 +47,23 @@ Qualidade de short = gancho (retencao nos 2s) + legenda + enquadramento. Os tres
 sao questao de craft (prompt, template, composicao), nao de infra. Em uso pessoal
 da pra usar o melhor LLM sem pensar em custo por clipe — vantagem direta no gancho.
 
-## Rodar (Apple Silicon)
+## Transcricao — backends (`transcribe/whisper.py`)
 
-ffmpeg via Homebrew; transcricao com faster-whisper, ou whisper.cpp/mlx-whisper
-(mais rapido em Metal). Interface em `transcribe/` permite trocar a engine.
+Auto, com fallback seguro (se um falhar, cai pro proximo sem derrubar a geracao):
+- **Mac Apple Silicon** → **MLX** (`mlx-whisper`, GPU/Neural Engine, ~3x). So-Mac.
+- **Win/Linux** → **faster-whisper**: GPU **NVIDIA/CUDA** se houver libs (cuBLAS/cuDNN),
+  senao **CPU** (int8).
+- Override: `MEDUSA_WHISPER_BACKEND` (mlx|faster|auto), `MEDUSA_WHISPER_DEVICE` (cuda|cpu),
+  `WHISPER_MODEL` (default base).
 
-## Futuro opcional (so se incomodar)
+## Knobs de performance
 
-- Mini UI local de revisao (Streamlit/Gradio ou um HTML unico) p/ ver thumbnails,
-  hook e score e escolher cortes — em vez de abrir a pasta na mao.
+- `MEDUSA_LLM_WORKERS` (default 4): paralelismo das chamadas de IA (triagem+juiz).
+- `MEDUSA_RENDER_WORKERS`: paralelismo do render dos cortes.
+- Layout fundido (legenda+hook no mesmo encode) e h264<=1080p no download sao os
+  ganhos estruturais — ver [[../../CLAUDE.md]] "Onde mora a qualidade".
+
+## Futuro opcional
+
+- GPU no Windows "de fabrica" (entregar cuDNN) — pendente de hardware NVIDIA p/ testar.
 - Presets de legenda por estilo de canal.
-- `game_event` (OCR de HUD) por jogo, se quiser pescar kill/clutch automaticamente.

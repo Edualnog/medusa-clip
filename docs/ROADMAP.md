@@ -1,9 +1,9 @@
 # Roadmap técnico — Medusa Clip local-first
 
 > App **gratuito** (sem assinatura, sem créditos), **local-first** e **BYO key**: o
-> usuário usa a própria chave da OpenRouter e todo o processamento de vídeo roda na
-> máquina dele. Monetização futura ainda **não definida** — não há cobrança. Código
-> **source-available** num único repo público (`Edualnog/medusa-cut`).
+> usuário usa a própria chave de IA (**OpenRouter, OpenAI ou Anthropic**) e todo o
+> processamento de vídeo roda na máquina dele. Monetização futura ainda **não definida**
+> — não há cobrança. Código **source-available** num único repo público (`Edualnog/medusa-cut`).
 
 ## Arquitetura-alvo
 
@@ -21,7 +21,7 @@ SUPABASE (só conta)
              ▼
 APP ELECTRON (PC do usuário)
   login (email/senha) — sessão local cifrada (safeStorage)
-  chave OpenRouter protegida localmente (safeStorage) → vai direto pra OpenRouter
+  chave de IA protegida localmente (safeStorage, por provedor) → vai direto pro provedor
   motor Python + FFmpeg/FFprobe embutidos (binário)
   processamento e biblioteca 100% locais
 ```
@@ -71,11 +71,10 @@ Foco: deixar os cortes "nível Opus Clip" e o processo mais rápido (LLM onde ma
 importa, sem sacrificar qualidade). Validado no material real (gameplay GTA RP).
 
 ### Feito
-- **Reframe ciente de cena** (`reframe/composition.py`, `scene_layout.py`): vídeo
-  editado troca de composição cena a cena. Cada cena é classificada (VLM primário,
-  fallback YuNet) em `gameplay+cam` / `reação fullscreen` / `gameplay puro` e
-  renderizada com o layout certo + concat. Antes: split facecam fixo com box GLOBAL
-  virava parede/borrão no topo na maior parte do tempo.
+- ~~**Reframe ciente de cena** (`reframe/composition.py`, `scene_layout.py`)~~ →
+  **SUPERADO/REMOVIDO em 06-21**: era lento (chamada de IA por cena + optical-flow) e
+  deixava barras pretas. Trocado pelos 2 layouts simples (ver rodada 06-21). Os módulos
+  `composition.py`/`scene_layout.py`/`facecam_vlm.py` foram apagados.
 - **Juiz multimodal consertado** (`pipeline.py`): era chamado com assinatura errada →
   `TypeError` engolido → o juiz (coração da seleção) NUNCA rodava; caía na triagem
   barata. Voltou a re-ranquear/refinar/dar gancho com arco.
@@ -100,6 +99,37 @@ importa, sem sacrificar qualidade). Validado no material real (gameplay GTA RP).
 5. Validar no app Electron ponta a ponta em hardware típico.
 6. Tunar limiares de seleção (`TRIAGE_TEXT_W`/`SIGNAL_W`, count do proposer, calibração
    de virality) com mais vídeos.
+
+## Motor & app — simplificação + performance (rodada 2026-06-21)
+
+> Esta rodada **substituiu** boa parte do reframe da rodada 06-20 (o scene-aware/VLM
+> por cena + optical-flow foram **removidos** — eram lentos e complexos). Foco: rápido
+> de verdade + 2 layouts limpos. Resultado: **~25min → ~3-5min** num vídeo de 12min.
+
+### Feito
+- **Multi-provedor de IA (BYO key)**: OpenRouter, OpenAI e Anthropic. Seletor na aba
+  Chaves; chave cifrada por provedor; `LLM_PROVIDER`+`LLM_API_KEY` no motor (OpenAI-compat
+  vs SDK nativo Anthropic).
+- **Download h264 ≤1080p** (`ingest/youtube.py`): o YouTube servia AV1 1440p, que o
+  ffmpeg embutido decodifica lentíssimo — era o gargalo de ~25min.
+- **Transcrição com GPU**: MLX (Mac Apple Silicon, ~3×) / CUDA (Win/Linux NVIDIA quando
+  há libs) / faster-whisper CPU — auto + fallback seguro. `base`+greedy.
+- **2 layouts só** (`reframe/compose.py`): A facecam-terço-superior+blur (model 1) / B
+  gameplay tela cheia+blur. Facecam detectado por YuNet **só nos cantos superiores**.
+  Removidos `scene_layout`/`composition`/`facecam_vlm` (código morto).
+- **Legenda + hook num só encode**: faixa alpha (qtrle) + overlay único, fundido no
+  render (era 2 encodes). **Hook** (manchete) queimado nos primeiros ~5s. Corrigido o
+  bug da legenda sumir em cortes longos (estourava o nº de inputs do ffmpeg).
+- **Paralelismo**: IA viral (`MEDUSA_LLM_WORKERS`) e render dos cortes (`MEDUSA_RENDER_WORKERS`).
+- **App**: player do clipe DENTRO do app + preview no hover (URL por id `zclip://clip/<id>`,
+  consertou o playback) + ordenação da biblioteca + score colorido por faixa + progresso
+  animado + ícone GitHub + "baixar e instalar" no Mac (baixa+abre o .dmg).
+
+### Pendente
+- **GPU no Windows "de fábrica" (NVIDIA)**: o código usa CUDA se as libs existirem, mas
+  entregar cuDNN sem o usuário instalar nada esbarra em licença NVIDIA + falta de wheel
+  Windows + **necessita máquina Windows+NVIDIA pra validar** (CI não tem GPU).
+- Assinatura/notarização (destrava auto-update silencioso no Mac + tira Gatekeeper/SmartScreen).
 
 ## Etapa A — Estabilização do processamento local
 

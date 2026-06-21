@@ -54,7 +54,7 @@ O Medusa Clip é um SaaS **local-first**:
 - o site público será uma landing page com autenticação e download do aplicativo;
 - o Supabase será usado para contas e autenticação (app **gratuito**, sem assinatura);
 - vídeos, transcrição e renderização serão processados localmente pelo app desktop;
-- cada usuário utilizará sua própria chave da OpenRouter para as etapas de IA;
+- cada usuário utilizará sua própria chave de IA (OpenRouter, OpenAI ou Anthropic) para as etapas de IA;
 - não haverá VPS processando ou armazenando os vídeos dos usuários.
 
 Essa arquitetura reduz custo operacional, preserva a privacidade dos arquivos e
@@ -77,15 +77,13 @@ pipeline de build.
 
 ```text
 vídeo local ou link público
-  → ingestão e leitura de metadados
+  → ingestão (download h264 ≤1080p) e leitura de metadados
   → extração de áudio
-  → sinais de energia e movimento
-  → seleção dos melhores momentos
-  → transcrição com timestamps por palavra
-  → triagem e julgamento multimodal via OpenRouter
-  → reframe vertical com acompanhamento da ação
-  → legenda karaokê
-  → renderização local com FFmpeg
+  → transcrição com timestamps (GPU no Mac/Windows quando disponível; CPU senão)
+  → sinais de energia e movimento → seleção dos melhores momentos
+  → triagem + julgamento multimodal (OpenRouter / OpenAI / Anthropic), em paralelo
+  → 2 layouts: facecam no topo + blur · ou gameplay tela cheia + blur
+  → legenda karaokê + hook (manchete), renderizados no mesmo encode (FFmpeg local)
   → biblioteca local de clipes + manifest.json
 ```
 
@@ -103,9 +101,9 @@ docs/       documentação de arquitetura e setup
 
 - motor de cortes local implementado;
 - seleção por áudio e movimento;
-- transcrição com `faster-whisper`;
-- análise viral multimodal via OpenRouter;
-- reframe dinâmico, detecção de facecam e legenda karaokê;
+- transcrição com GPU (MLX no Mac / CUDA no Windows) e fallback `faster-whisper` CPU;
+- análise viral multimodal multi-provedor (OpenRouter / OpenAI / Anthropic), em paralelo;
+- 2 layouts (facecam no topo + blur · gameplay tela cheia), detecção de facecam, legenda karaokê + hook;
 - aplicativo Electron funcional, com login Supabase e onboarding de aceites;
 - builds automatizados (GitHub Actions) para macOS `arm64`, Windows `x64` e Linux
   `x64`, publicados como release a cada tag `v*`, com auto-update;
@@ -157,16 +155,16 @@ npm run dev
 ## Privacidade e custos
 
 - o vídeo é processado e salvo localmente no computador do usuário;
-- a chave da OpenRouter é usada apenas pelo aplicativo e pelo provedor de IA;
-- o usuário paga diretamente à OpenRouter pelo consumo dos modelos;
+- a chave de IA é usada apenas pelo aplicativo e pelo provedor escolhido;
+- o usuário paga diretamente ao provedor (OpenRouter / OpenAI / Anthropic) pelo consumo;
 - o Supabase armazenará somente dados de conta, autenticação e acesso ao produto;
 - nenhum vídeo precisa ser enviado para a infraestrutura do Medusa Clip.
 
 **Custo na prática:** o gasto de IA é de **centavos por corte**. Num teste com os
-modelos padrão (triagem `gpt-4o-mini`, juiz `gpt-4.1`), um vídeo de ~10 min gerou
-4 cortes por **poucos centavos de dólar no total** — cerca de 1 centavo por corte.
-O valor varia com o modelo escolhido (modelos mais baratos custam menos) e com o
-tamanho do vídeo, e é cobrado direto pela OpenRouter na chave do usuário.
+modelos padrão, um vídeo de ~10 min gerou 4 cortes por **poucos centavos de dólar no
+total** — cerca de 1 centavo por corte. O valor varia com o provedor/modelo escolhido
+(opções mais baratas custam menos) e com o tamanho do vídeo, cobrado direto pelo
+provedor na chave do usuário.
 
 ## Roadmap
 
