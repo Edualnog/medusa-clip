@@ -1,17 +1,43 @@
+<div align="center">
+
+<img src="desktop/build/icon.png" alt="Medusa Clip" width="120" />
+
 # Medusa Clip
 
-Aplicativo desktop para transformar gameplays longos em clipes verticais 9:16
-prontos para TikTok, Reels e YouTube Shorts.
+**Cortes verticais 9:16 nível Opus Clip, feitos pra gameplay — grátis, open source e 100% no seu PC.**
 
-O processamento pesado acontece no computador do usuário. O motor combina sinais
-de áudio e movimento, transcrição, análise multimodal, enquadramento automático e
-legendas karaokê para encontrar e renderizar os melhores momentos.
+[![Release](https://img.shields.io/github/v/release/Edualnog/medusa-cut?label=release&color=ffd11a)](https://github.com/Edualnog/medusa-cut/releases/latest)
+[![License: AGPL-3.0](https://img.shields.io/github/license/Edualnog/medusa-cut?color=orange)](LICENSE)
+[![Downloads](https://img.shields.io/github/downloads/Edualnog/medusa-cut/total?color=brightgreen)](https://github.com/Edualnog/medusa-cut/releases)
+![Platforms](https://img.shields.io/badge/macOS%20%C2%B7%20Windows%20%C2%B7%20Linux-grey)
+![No sign-up](https://img.shields.io/badge/sem%20cadastro-100%25%20local-success)
 
-## Download
+[**🌐 medusaclip.com**](https://medusaclip.com) · [**⬇️ Download**](#download) · [**💛 Apoiar**](https://medusaclip.com/apoiar)
 
-Grátis. Cada instalador já traz o app, o motor de cortes, `ffmpeg` e `ffprobe`
-embutidos — sem instalar Python nem dependências. Os links abaixo apontam sempre
-para a **versão mais recente**; baixe pelo botão ou cole o comando no terminal.
+</div>
+
+---
+
+O **Medusa Clip** transforma gameplays longos em clipes verticais 9:16 prontos pra
+TikTok, Reels e YouTube Shorts. O motor é **especializado em gameplay**: combina áudio,
+movimento e visão pra achar clutch, fail, clímax e reação — com hook, legenda karaokê e
+enquadramento automático.
+
+Tudo roda **no seu computador**: o gameplay **nunca sobe pra nuvem**, **não tem cadastro
+nem login**, e a IA usa a **sua própria chave**. É **grátis** e **open source**.
+
+## ✨ Recursos
+
+- **🎮 Especialista em gameplay** — não trata como vídeo de fala qualquer; lê áudio, movimento e frames pra reconhecer o que importa.
+- **🔒 Sem cadastro, 100% local** — nada de login, e-mail ou senha; o vídeo é processado e fica no seu PC, sem servidor nosso.
+- **🆓 Grátis e open source** — sob a licença AGPL-3.0, sem assinatura e sem paywall.
+- **🔑 Sua chave de IA (BYO key)** — OpenRouter, OpenAI ou Anthropic; você paga centavos direto ao provedor.
+- **✂️ Pós-produção automática** — hook (manchete), legenda karaokê palavra a palavra e reframe em 2 layouts (facecam + gameplay · ou foco na ação).
+- **🖥️ Self-contained** — macOS, Windows e Linux; o instalador já traz o motor, `ffmpeg` e `ffprobe`. Sem instalar Python nem dependências.
+
+## ⬇️ Download
+
+Grátis. Os links apontam sempre pra **versão mais recente** — baixe pelo botão ou cole o comando.
 
 **macOS (Apple Silicon / ARM64)** — [baixar `.dmg`](https://github.com/Edualnog/medusa-cut/releases/latest/download/MedusaClip-mac-arm64.dmg)
 
@@ -31,49 +57,11 @@ iwr https://github.com/Edualnog/medusa-cut/releases/latest/download/MedusaClip-w
 curl -L https://github.com/Edualnog/medusa-cut/releases/latest/download/MedusaClip-linux-x86_64.AppImage -o MedusaClip.AppImage && chmod +x MedusaClip.AppImage && ./MedusaClip.AppImage
 ```
 
-Todas as versões: [Releases](https://github.com/Edualnog/medusa-cut/releases). Os builds
+Todas as versões em [Releases](https://github.com/Edualnog/medusa-cut/releases). Os builds
 ainda **não são assinados** — na primeira abertura, no macOS clique com o botão direito
 no app → **Abrir**; no Windows, em **Mais informações → Executar assim mesmo**.
 
-## Licença (open source — AGPL-3.0)
-
-O Medusa Clip é **open source**, sob a **GNU Affero General Public License v3.0**
-(AGPL-3.0). Você pode usar, estudar, modificar e redistribuir o código — desde que
-trabalhos derivados (inclusive quando oferecidos como serviço pela rede) **também
-sejam liberados sob a AGPL-3.0**, mantendo o software livre. Veja [`LICENSE`](LICENSE)
-para os termos completos.
-
-Copyright (c) 2026 Medusa Clip. Os componentes de terceiros embutidos nos builds
-oficiais (ex.: `ffmpeg`, bibliotecas Python) seguem suas próprias licenças. As marcas
-"Medusa Clip" e "medusaclip.com" e os logos não são cobertos pela licença de código.
-
-## Direção do produto
-
-O Medusa Clip é um SaaS **local-first**:
-
-- o site público será uma landing page com autenticação e download do aplicativo;
-- o Supabase será usado para contas e autenticação (app **gratuito**, sem assinatura);
-- vídeos, transcrição e renderização serão processados localmente pelo app desktop;
-- cada usuário utilizará sua própria chave de IA (OpenRouter, OpenAI ou Anthropic) para as etapas de IA;
-- não haverá VPS processando ou armazenando os vídeos dos usuários.
-
-Essa arquitetura reduz custo operacional, preserva a privacidade dos arquivos e
-aproveita CPU/GPU e o IP residencial do próprio usuário.
-
-## Plataformas planejadas
-
-| Plataforma | Arquitetura | Formato planejado |
-|---|---|---|
-| macOS | Apple Silicon (`arm64`) | `.dmg` |
-| macOS | Intel (`x64`) | `.dmg` |
-| Windows | `x64` | instalador `.exe` |
-| Linux | `x64` | `.AppImage` e/ou `.deb` |
-
-O motor Python é empacotado por plataforma com PyInstaller. O aplicativo Electron
-inclui o motor, `ffmpeg` e `ffprobe`, portanto cada sistema precisa de seu próprio
-pipeline de build.
-
-## Como funciona
+## ⚙️ Como funciona
 
 ```text
 vídeo local ou link público
@@ -83,99 +71,69 @@ vídeo local ou link público
   → sinais de energia e movimento → seleção dos melhores momentos
   → triagem + julgamento multimodal (OpenRouter / OpenAI / Anthropic), em paralelo
   → 2 layouts: facecam no topo + blur · ou gameplay tela cheia + blur
-  → legenda karaokê + hook (manchete), renderizados no mesmo encode (FFmpeg local)
+  → legenda karaokê + hook (manchete), no mesmo encode (FFmpeg local)
   → biblioteca local de clipes + manifest.json
 ```
 
-## Estrutura do monorepo
+## 🔐 Privacidade e custos
 
-```text
-agent/      motor Python, pipeline de vídeo, worker legado e testes
-desktop/    aplicativo Electron e empacotamento multiplataforma
-web/        landing Next.js, autenticação Supabase e downloads por plataforma
-supabase/   schemas e policies; inclui tabelas legadas do protótipo cloud
-docs/       documentação de arquitetura e setup
-```
+- O vídeo é processado e salvo **localmente** no seu computador.
+- **Sem cadastro, sem conta, sem servidor nosso** — nenhum gameplay precisa sair do seu PC.
+- A chave de IA fica **cifrada no seu dispositivo** e fala direto com o provedor escolhido.
+- Você paga o consumo de IA **direto ao provedor** (OpenRouter / OpenAI / Anthropic).
 
-## Estado atual
+**Custo na prática:** centavos por corte. Num teste com os modelos padrão, um vídeo de
+~10 min gerou 4 cortes por **poucos centavos de dólar no total**. O valor varia com o
+provedor/modelo e o tamanho do vídeo, cobrado direto pelo provedor na sua chave.
 
-- motor de cortes local implementado;
-- seleção por áudio e movimento;
-- transcrição com GPU (MLX no Mac / CUDA no Windows) e fallback `faster-whisper` CPU;
-- análise viral multimodal multi-provedor (OpenRouter / OpenAI / Anthropic), em paralelo;
-- 2 layouts (facecam no topo + blur · gameplay tela cheia), detecção de facecam, legenda karaokê + hook;
-- aplicativo Electron funcional, com login Supabase e onboarding de aceites;
-- builds automatizados (GitHub Actions) para macOS `arm64`, Windows `x64` e Linux
-  `x64`, publicados como release a cada tag `v*`, com auto-update;
-- landing local-first com downloads por plataforma e auto-update ativos;
-- pendente: assinatura/notarização dos builds (ainda sem assinatura).
+## 💛 Apoie o projeto
 
-## Desenvolvimento
+O Medusa Clip é grátis e open source, no espírito de projetos como o Blender. Se ele te
+ajuda, considere apoiar (sempre opcional, nunca um paywall): **[medusaclip.com/apoiar](https://medusaclip.com/apoiar)**
+— via **Pix** ou **cripto**. Compartilhar com quem joga e contribuir no GitHub também ajuda muito.
 
-### Motor Python
+## 🛠️ Desenvolvimento
+
+### Motor Python (`agent/`)
 
 Requisitos: Python 3.11+, FFmpeg e FFprobe.
 
 ```bash
-cd agent
-make setup
-make test
-```
-
-Execução pela CLI:
-
-```bash
-cd agent
+cd agent && make setup && make test
+# CLI:
 .venv/bin/medusacut "https://youtube.com/watch?v=..." --out out --clips 3
 ```
 
-### Aplicativo desktop
+### Aplicativo desktop (`desktop/`)
 
 ```bash
-cd desktop
-npm install
-npm start
-```
-
-Para gerar o instalador no sistema atual:
-
-```bash
-cd desktop
+cd desktop && npm install && npm start
+# instalador do sistema atual:
 bash scripts/build_app.sh
 ```
 
-### Site
+### Site (`web/`)
 
 ```bash
-cd web
-npm install
-npm run dev
+cd web && npm install && npm run dev
 ```
 
-## Privacidade e custos
+## 📁 Estrutura
 
-- o vídeo é processado e salvo localmente no computador do usuário;
-- a chave de IA é usada apenas pelo aplicativo e pelo provedor escolhido;
-- o usuário paga diretamente ao provedor (OpenRouter / OpenAI / Anthropic) pelo consumo;
-- o Supabase armazenará somente dados de conta, autenticação e acesso ao produto;
-- nenhum vídeo precisa ser enviado para a infraestrutura do Medusa Clip.
+```text
+agent/      motor Python — pipeline de vídeo e testes (empacotado como binário)
+desktop/    aplicativo Electron (o produto) + empacotamento multiplataforma
+web/        landing estática (Next.js) — apresentação, downloads e página de apoio
+docs/       arquitetura, setup e textos legais
+```
 
-**Custo na prática:** o gasto de IA é de **centavos por corte**. Num teste com os
-modelos padrão, um vídeo de ~10 min gerou 4 cortes por **poucos centavos de dólar no
-total** — cerca de 1 centavo por corte. O valor varia com o provedor/modelo escolhido
-(opções mais baratas custam menos) e com o tamanho do vídeo, cobrado direto pelo
-provedor na chave do usuário.
+## 📄 Licença
 
-## Roadmap
+Open source sob **[GNU AGPL-3.0](LICENSE)**. Você pode usar, estudar, modificar e
+redistribuir — desde que derivados (inclusive servidos pela rede) continuem abertos sob
+a mesma licença. Componentes de terceiros nos builds (ex.: `ffmpeg`) seguem suas próprias
+licenças. As marcas "Medusa Clip"/"medusaclip.com" e os logos não entram na licença de código.
 
-1. Simplificar o site para landing page, autenticação Supabase e downloads.
-2. Integrar login e controle de acesso do Supabase ao aplicativo desktop.
-3. Corrigir e estabilizar o fluxo local completo em macOS.
-4. Automatizar builds para macOS `arm64` e `x64`, Windows `x64` e Linux `x64`.
-5. Assinar/notarizar os builds e publicar releases versionadas.
-6. Implementar atualização automática e telemetria opcional, sem enviar vídeos.
-
-## Licença
-
-Open source sob **AGPL-3.0** — ver a seção [Licença](#licença-open-source--agpl-30)
-acima e o arquivo [`LICENSE`](LICENSE).
+<div align="center">
+<sub>Feito pra criadores de gameplay · sem cadastro · no seu PC.</sub>
+</div>
