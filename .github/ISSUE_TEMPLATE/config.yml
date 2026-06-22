@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 💬 Dúvidas e discussões
+    url: https://github.com/Edualnog/medusa-clip/discussions
+    about: Perguntas, ideias abertas e conversa geral vão melhor nas Discussions.
+  - name: 💸 Apoiar o projeto
+    url: https://medusaclip.com/apoiar
+    about: O app é gratuito. Apoio (Pix ou cripto) é sempre opcional.
