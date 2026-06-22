@@ -51,3 +51,36 @@ def test_build_thumbnail_returns_none_on_bad_source(tmp_path):
     )
     assert res is None
     assert not out.exists()
+
+
+def test_build_thumbnail_ai_falls_back_when_not_openai(tmp_path, monkeypatch):
+    # capa por IA so com provider==openai; em outro provedor devolve (None, None)
+    from medusacut.thumbnail import build_thumbnail_ai
+
+    monkeypatch.setenv("LLM_PROVIDER", "openrouter")
+    out = tmp_path / "t.jpg"
+    path, usage = build_thumbnail_ai(
+        "/x.mp4", 0.0, 5.0, "X",
+        out_path=str(out), cache_dir=str(tmp_path / "c"),
+    )
+    assert path is None and usage is None
+
+
+def test_image_usage_cost_with_details():
+    from medusacut.llm import image_usage
+
+    u = {
+        "input_tokens": 1700, "output_tokens": 4000, "total_tokens": 5700,
+        "input_tokens_details": {"text_tokens": 200, "image_tokens": 1500},
+    }
+    r = image_usage(u)
+    # 200/1e6*5 + 1500/1e6*10 + 4000/1e6*40 = 0.176
+    assert abs(r.cost_usd - 0.176) < 1e-6
+    assert r.total_tokens == 5700
+
+
+def test_image_usage_none_is_safe():
+    from medusacut.llm import image_usage
+
+    r = image_usage(None)
+    assert r.cost_usd is None and r.total_tokens == 0

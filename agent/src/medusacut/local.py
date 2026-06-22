@@ -53,6 +53,7 @@ def run(argv: list[str] | None = None) -> int:
     p.add_argument("--facecam", default="auto", help="auto|tl|tr|bl|br")
     p.add_argument("--no-captions", action="store_true")
     p.add_argument("--no-thumbs", action="store_true", help="nao gerar thumbnail (capa) dos cortes")
+    p.add_argument("--thumb-ai", action="store_true", help="gerar a capa com IA (gpt-image, so OpenAI; custo extra)")
     p.add_argument("--key", default=None, help="chave do provedor de IA (ou env LLM_API_KEY); provedor via LLM_PROVIDER")
     a = p.parse_args(argv)
 
@@ -62,6 +63,18 @@ def run(argv: list[str] | None = None) -> int:
     # 'base' e ~3-4x mais rapido que 'small' em CPU e a qualidade basta (o juiz tambem
     # ve frames). Override via env WHISPER_MODEL.
     os.environ.setdefault("WHISPER_MODEL", "base")
+
+    # Capa com IA: so o provedor OpenAI tem o endpoint de imagem. Em outro provedor,
+    # avisa e cai pra capa local (sem quebrar a geracao).
+    thumb_ai = a.thumb_ai
+    if thumb_ai:
+        from medusacut import llm
+        if llm.provider() != "openai":
+            _emit({
+                "type": "warning",
+                "message": "Capa com IA só funciona com o provedor OpenAI — gerei a capa local (grátis).",
+            })
+            thumb_ai = False
 
     from medusacut.pipeline import generate_clips
 
@@ -81,6 +94,7 @@ def run(argv: list[str] | None = None) -> int:
             facecam_corner=None if a.facecam == "auto" else a.facecam,
             captions=not a.no_captions,
             thumbnails=not a.no_thumbs,
+            thumb_ai=thumb_ai,
             score_virality=True,
             local_source=a.source if is_file else None,
             progress=progress,

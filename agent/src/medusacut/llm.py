@@ -64,6 +64,43 @@ PRICES = {
     "gpt-4.1-nano": (0.10, 0.40),
 }
 
+# gpt-image-1 (capa por IA) cobra por TOKEN, com precos diferentes por tipo (USD/1M):
+# texto de entrada, imagem de entrada (frames que mandamos) e imagem de saida (a capa).
+GPT_IMAGE_PRICES = {"text_input": 5.0, "image_input": 10.0, "image_output": 40.0}
+
+
+def image_usage(resp_usage, model: str = "gpt-image-1") -> Usage:
+    """Usage (tokens + custo USD) de uma chamada de imagem (gpt-image-1).
+
+    O `usage` da resposta traz input_tokens/output_tokens e, quando disponivel,
+    input_tokens_details com text_tokens/image_tokens. Calcula o custo pela tabela
+    de precos de imagem; sem o detalhe, assume a entrada como imagem (mandamos frames)."""
+    if resp_usage is None:
+        return Usage(model=model, calls=1)
+
+    def _g(obj, key, default=0):
+        if isinstance(obj, dict):
+            return obj.get(key, default) or default
+        return getattr(obj, key, default) or default
+
+    inp = int(_g(resp_usage, "input_tokens"))
+    out = int(_g(resp_usage, "output_tokens"))
+    details = _g(resp_usage, "input_tokens_details", {})
+    text_t = int(_g(details, "text_tokens"))
+    image_t = int(_g(details, "image_tokens"))
+    p = GPT_IMAGE_PRICES
+    if text_t or image_t:
+        cost = (text_t / 1_000_000 * p["text_input"]
+                + image_t / 1_000_000 * p["image_input"]
+                + out / 1_000_000 * p["image_output"])
+    else:  # sem detalhe: input como imagem + output de imagem
+        cost = inp / 1_000_000 * p["image_input"] + out / 1_000_000 * p["image_output"]
+    return Usage(
+        model=model, prompt_tokens=inp, completion_tokens=out,
+        total_tokens=inp + out, cost_usd=cost, calls=1,
+    )
+
+
 # Anthropic exige max_tokens; as saidas aqui sao JSONs curtos/medios.
 ANTHROPIC_MAX_TOKENS = 8192
 

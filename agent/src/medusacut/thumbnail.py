@@ -59,6 +59,108 @@ def build_thumbnail(
         return None
 
 
+def build_thumbnail_ai(
+    media_path: str,
+    start: float,
+    end: float,
+    hook_text: str,
+    *,
+    game_context: str = "",
+    facecam_box: tuple[float, float, float, float] | None = None,
+    out_path: str,
+    cache_dir: str,
+):
+    """Gera a capa via OpenAI gpt-image-1 (images.edit), usando o frame do corte como
+    fundo e o ROSTO REAL (recorte da facecam) como referencia de semelhanca.
+
+    So roda com provider == 'openai' (OpenRouter/Anthropic nao tem images endpoint).
+    Devolve (caminho_do_jpg, Usage) ou (None, None) — quando None o chamador cai pra
+    capa LOCAL. O Usage carrega tokens+custo da imagem (somado ao total do run).
+    Nunca levanta: capa e extra, nao pode derrubar o corte."""
+    try:
+        import base64  # noqa: PLC0415
+
+        from medusacut import llm  # noqa: PLC0415
+
+        if llm.provider() != "openai":
+            return None, None  # so OpenAI tem o endpoint de imagem -> fallback local
+        os.makedirs(cache_dir, exist_ok=True)
+        scene = _pick_frame(media_path, start, end, facecam_box, cache_dir)
+        if not scene:
+            return None, None
+
+        # recorta o rosto real pra reforcar a semelhanca na geracao
+        face_path = None
+        if facecam_box:
+            from PIL import Image  # noqa: PLC0415
+
+            img = Image.open(scene).convert("RGB")
+            x, y, w, h = _abs_box(facecam_box, img.width, img.height)
+            if w > 8 and h > 8:
+                face_path = os.path.join(cache_dir, "thumb_face.png")
+                img.crop((x, y, x + w, y + h)).save(face_path)
+
+        prompt = _ai_prompt(hook_text, game_context, has_face=bool(face_path))
+        client = llm.get_client()  # base_url da OpenAI quando provider==openai
+        handles = [open(scene, "rb")]
+        if face_path:
+            handles.append(open(face_path, "rb"))
+        try:
+            resp = client.images.edit(
+                model="gpt-image-1",
+                image=handles,
+                prompt=prompt,
+                size="1024x1536",  # 9:16 (mesmo formato das referencias)
+                quality=os.environ.get("MEDUSA_THUMB_QUALITY", "high"),
+                output_format="jpeg",
+            )
+        finally:
+            for fh in handles:
+                fh.close()
+        b64 = resp.data[0].b64_json if resp.data else None
+        if not b64:
+            return None, None
+        os.makedirs(os.path.dirname(out_path) or ".", exist_ok=True)
+        with open(out_path, "wb") as fh:
+            fh.write(base64.b64decode(b64))
+        # custo e EXTRA: um erro aqui nao pode descartar a capa ja salva (senao o
+        # chamador acha que falhou e sobrescreve pela local). Falha -> usage None.
+        try:
+            usage = llm.image_usage(getattr(resp, "usage", None))
+        except Exception:
+            usage = None
+        return out_path, usage
+    except Exception as exc:  # qualquer erro -> capa local (chamador faz o fallback)
+        import sys
+
+        print(f"[medusacut] capa IA falhou ({exc}); caindo pra capa local", file=sys.stderr)
+        return None, None
+
+
+def _ai_prompt(hook_text: str, game_context: str, *, has_face: bool) -> str:
+    face_line = (
+        "Use o ROSTO REAL do streamer da ultima imagem (mantenha a aparencia e "
+        "identidade dele), grande no canto superior, com expressao exagerada e "
+        "empolgada. "
+        if has_face
+        else ""
+    )
+    ctx = f" Contexto do jogo: {game_context}." if (game_context or "").strip() else ""
+    text = (hook_text or "").strip()
+    return (
+        "Crie uma THUMBNAIL VERTICAL 9:16 de YouTube/Shorts no estilo gamer "
+        "brasileiro: chamativa, dramatica, alto contraste e cores vivas. "
+        + face_line
+        + "Use a cena de gameplay da primeira imagem como fundo, com brilho "
+        "cinematografico, leve desfoque e luzes coloridas (vermelho/azul). Adicione "
+        "uma seta vermelha brilhante apontando para a acao principal. Escreva o "
+        "TITULO em letras GARRAFAIS, fonte pesada estilo grunge/impacto, em BRANCO e "
+        "AMARELO com contorno preto grosso e sombra, ocupando a parte de baixo, "
+        f'exatamente este texto: "{text}". Pode usar 1 emoji de impacto. NAO '
+        "adicione marca d'agua nem logo." + ctx
+    )
+
+
 def _pick_frame(media_path, start, end, facecam_box, cache_dir, *, n=5) -> str | None:
     """Amostra `n` frames no trecho e escolhe o mais 'expressivo': maior desvio-padrao
     na regiao da facecam (proxy de boca aberta/reacao) ou no frame todo se nao houver

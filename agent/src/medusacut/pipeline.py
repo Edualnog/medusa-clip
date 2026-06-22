@@ -69,6 +69,7 @@ def generate_clips(
     score_virality: bool = True,
     captions: bool = True,
     thumbnails: bool = True,
+    thumb_ai: bool = False,
     min_len: float | None = None,
     max_len: float | None = None,
     local_source: str | None = None,
@@ -177,6 +178,7 @@ def generate_clips(
         score_virality=score_virality,
         captions=captions,
         thumbnails=thumbnails,
+        thumb_ai=thumb_ai,
         final_count=max_clips,
         min_len=lo,
         max_len=hi,
@@ -202,6 +204,7 @@ def render_candidates(
     score_virality: bool = False,
     captions: bool = False,
     thumbnails: bool = True,
+    thumb_ai: bool = False,
     final_count: int | None = None,
     min_len: float | None = None,
     max_len: float | None = None,
@@ -263,6 +266,8 @@ def render_candidates(
         render_progress = progress
 
     total = len(prepared)
+    # Custo das capas por IA (gpt-image), coletado pelas threads e somado ao total.
+    thumb_usages: list = []
 
     def _render_one(idx: int, cand, hook, words) -> Clip:
         """Renderiza 1 corte (layout + legenda) -> Clip. Independente por corte:
@@ -307,10 +312,20 @@ def render_candidates(
             from medusacut import thumbnail
             stem = os.path.splitext(file_name)[0]
             thumb_path = os.path.join(out_dir, f"{stem}.jpg")
-            made = thumbnail.build_thumbnail(
-                media.path, cand.start, cand.end, hook_text,
-                facecam_box=facecam_box, out_path=thumb_path, cache_dir=cap_dir,
-            )
+            made = None
+            if thumb_ai:  # tenta gpt-image (OpenAI); None -> cai pro composite local
+                made, thumb_usage = thumbnail.build_thumbnail_ai(
+                    media.path, cand.start, cand.end, hook_text,
+                    game_context=game_context, facecam_box=facecam_box,
+                    out_path=thumb_path, cache_dir=cap_dir,
+                )
+                if thumb_usage is not None:
+                    thumb_usages.append(thumb_usage)  # list.append e thread-safe (GIL)
+            if not made:
+                made = thumbnail.build_thumbnail(
+                    media.path, cand.start, cand.end, hook_text,
+                    facecam_box=facecam_box, out_path=thumb_path, cache_dir=cap_dir,
+                )
             if made:
                 thumb_name = os.path.basename(made)
         return Clip(
@@ -344,6 +359,10 @@ def render_candidates(
                 results[clip.index] = clip
                 _report(render_progress, len(results) / total, f"Renderizado {len(results)}/{total}…")
         clips = [results[i] for i in sorted(results)]
+
+    # Soma o custo das capas por IA (se houve) ao usage do run -> entra no manifest/contador.
+    for tu in thumb_usages:
+        usage = tu if usage is None else usage + tu
 
     _write_manifest(out_dir, url=url, layout=layout_name, clips=clips, usage=usage, facecam=facecam_info)
     _report(render_progress, 1.0, "Pronto")

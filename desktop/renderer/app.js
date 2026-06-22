@@ -82,6 +82,7 @@ $("layout").addEventListener("change", updateSummary);
 $("dur").addEventListener("change", updateSummary);
 $("captions").addEventListener("change", updateSummary);
 $("thumbnails").addEventListener("change", updateSummary);
+$("thumbAi").addEventListener("change", updateSummary);
 $("clips").addEventListener("input", updateSummary);
 
 $("pasteLink").addEventListener("click", async () => {
@@ -222,7 +223,14 @@ function updateSummary() {
   $("summaryDuration").textContent = DURATION_LABELS[$("dur").value] || "PERSONALIZADA";
   $("summaryClips").textContent = `${clips} ${clips === 1 ? "CLIP" : "CLIPS"}`;
   $("summaryCaptions").textContent = $("captions").checked ? "ATIVADAS" : "DESATIVADAS";
-  $("summaryThumbs").textContent = $("thumbnails").checked ? "ATIVADA" : "DESATIVADA";
+  // Capa: a opção "com IA" só faz sentido se a capa estiver ligada.
+  const thumbsOn = $("thumbnails").checked;
+  $("thumbAi").disabled = !thumbsOn;
+  $("thumbAiField").classList.toggle("disabled", !thumbsOn);
+  const thumbAiOn = thumbsOn && $("thumbAi").checked;
+  $("summaryThumbs").textContent = !thumbsOn
+    ? "DESATIVADA"
+    : (thumbAiOn ? "IA (CUSTO EXTRA)" : "LOCAL · GRÁTIS");
   $("gen").disabled = !sourceReady() || isProcessing;
 }
 
@@ -368,6 +376,7 @@ $("gen").addEventListener("click", async () => {
     facecam: "auto", // sempre auto: deteccao nos cantos superiores (sem escolha manual)
     captions: $("captions").checked,
     thumbnails: $("thumbnails").checked,
+    thumbAi: $("thumbnails").checked && $("thumbAi").checked,
   });
 });
 
@@ -507,6 +516,12 @@ function clipCard(clip, index) {
     : "";
   const title = (clip.hook || "").trim() || clip.file;
   const description = (clip.description || "").trim();
+  // Trecho do vídeo original de onde o corte saiu (de–até), pra saber a origem.
+  const from = fmtTime(clip.start);
+  const to = fmtTime(clip.end);
+  const range = from && to
+    ? `<div class="clip-range">TRECHO ${from} – ${to}${clip.duration_s != null ? ` · ${Math.round(clip.duration_s)}S` : ""}</div>`
+    : "";
   // Capa gerada vira o poster do card (some no hover/play); fallback: 1o frame do video.
   const poster = clip.thumbUrl ? ` poster="${escapeAttr(clip.thumbUrl)}"` : "";
   const thumbBtn = clip.thumbUrl
@@ -521,6 +536,7 @@ function clipCard(clip, index) {
       </div>
       <div class="clip-body">
         <div class="clip-hook">${escapeHtml(title)}</div>
+        ${range}
         ${description ? `<p class="clip-description">${escapeHtml(description)}</p>` : ""}
         <div class="clip-actions">
           <button type="button" data-action="play" data-index="${index}">▶ ABRIR</button>
@@ -585,6 +601,17 @@ function escapeHtml(value) {
 
 function escapeAttr(value) {
   return escapeHtml(value);
+}
+
+// Segundos -> "m:ss" (ou "h:mm:ss" se passar de 1h). Usado no trecho do card.
+function fmtTime(s) {
+  if (s == null || !isFinite(s)) return null;
+  s = Math.max(0, Math.round(s));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  const pad = (n) => String(n).padStart(2, "0");
+  return h > 0 ? `${h}:${pad(m)}:${pad(sec)}` : `${m}:${pad(sec)}`;
 }
 
 $("refresh").addEventListener("click", loadLibrary);

@@ -687,6 +687,8 @@ ipcMain.handle("list-clips", () => {
         hook: meta.hook || "",
         description: meta.description || "",
         virality_score: meta.virality_score ?? null,
+        start: meta.start ?? null,
+        end: meta.end ?? null,
         duration_s: meta.start != null && meta.end != null ? meta.end - meta.start : null,
       });
     }
@@ -729,6 +731,7 @@ ipcMain.on("generate", (_e, opts) => {
   ];
   if (!opts.captions) args.push("--no-captions");
   if (opts.thumbnails === false) args.push("--no-thumbs");
+  if (opts.thumbAi === true) args.push("--thumb-ai");
 
   // A chave vai por VARIÁVEL DE AMBIENTE (LLM_API_KEY), nunca por argv: argumentos
   // de processo são visíveis a outros processos/usuários locais (ps -ef). O motor lê

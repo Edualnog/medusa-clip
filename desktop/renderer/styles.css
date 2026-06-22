@@ -417,6 +417,7 @@ button:focus-visible, input:focus-visible, select:focus-visible {
 .check-field input { width: 18px; height: 18px; accent-color: var(--accent); }
 .check-field span { display: grid; gap: 3px; }
 .check-field small { color: var(--dim); font-size: 16px; }
+.check-field.disabled { opacity: 0.45; cursor: not-allowed; }
 .local-note, .panel-note {
   margin: 20px 22px 0;
   color: var(--dim);
@@ -539,6 +540,7 @@ button:focus-visible, input:focus-visible, select:focus-visible {
 .clip-viral--low  { background: var(--danger); }   /* <50 vermelho */
 .clip-body { padding: 16px; }
 .clip-hook { min-height: 40px; font-family: var(--pixel); font-size: 9px; line-height: 1.55; }
+.clip-range { margin-top: 8px; font-family: var(--pixel); font-size: 6px; color: var(--muted); letter-spacing: .04em; }
 .clip-description { display: -webkit-box; overflow: hidden; margin: 10px 0 0; color: var(--muted); font-size: 17px; line-height: 1.35; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 .clip-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px; }
 .clip-actions button { min-height: 38px; border: 1px solid var(--line); background: transparent; color: var(--muted); font-family: var(--pixel); font-size: 6px; cursor: pointer; }
