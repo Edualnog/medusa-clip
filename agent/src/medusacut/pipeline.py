@@ -28,6 +28,31 @@ OVERSELECT_FACTOR = 3
 # TIPO de momento (hooks.moments) e quem manda; isto so evita corte degenerado.
 HARD_FLOOR = 10.0
 
+# Tamanho maximo do trecho de titulo no nome do arquivo (sem contar prefixo/extensao).
+CLIP_NAME_MAX = 50
+
+
+def clip_filename(idx: int, hook_text: str = "") -> str:
+    """Nome do arquivo do corte derivado do HOOK (manchete da IA), nao 'clip_NN'.
+
+    Ex.: hook "Clutch 1v5 no ultimo round!" -> "01-clutch-1v5-no-ultimo-round.mp4".
+    O prefixo numerico (idx) preserva a ordem na pasta/biblioteca (que ordena por
+    nome) e garante unicidade entre cortes que gerem o mesmo slug. Sem hook (ex.: IA
+    desligada) cai pro classico "clip_NN.mp4".
+    """
+    import re
+    import unicodedata
+
+    # tira acentos (NFKD -> remove combinantes), minusculo, so [a-z0-9], resto vira '-'
+    norm = unicodedata.normalize("NFKD", hook_text or "")
+    ascii_text = norm.encode("ascii", "ignore").decode("ascii").lower()
+    slug = re.sub(r"[^a-z0-9]+", "-", ascii_text).strip("-")
+    if len(slug) > CLIP_NAME_MAX:
+        slug = slug[:CLIP_NAME_MAX].rstrip("-")
+    if not slug:
+        return f"clip_{idx:02d}.mp4"
+    return f"{idx:02d}-{slug}.mp4"
+
 
 def generate_clips(
     url: str,
@@ -241,7 +266,7 @@ def render_candidates(
         nomes de arquivo/cache derivam de `clip_NN`, sem colisao entre threads."""
         import sys as _sys
 
-        file_name = f"clip_{idx:02d}.mp4"
+        file_name = clip_filename(idx, hook.hook if hook else "")
         out_path = os.path.join(out_dir, file_name)
         cap_dir = os.path.join(cache_dir, f"{os.path.splitext(file_name)[0]}_cap")
         clip_dur = cand.end - cand.start

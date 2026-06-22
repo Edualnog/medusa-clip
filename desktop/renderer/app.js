@@ -40,6 +40,7 @@ function setView(view) {
   $("topSectionCode").textContent = VIEW_META[view].code;
 
   if (view === "biblioteca") loadLibrary();
+  if (view === "conta") loadLibraryPath();
   if (view === "apis") {
     loadStats();
     refreshProviderBadges();
