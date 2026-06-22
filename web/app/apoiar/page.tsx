@@ -12,7 +12,6 @@ const PIX_CITY = "PORTO ALEGRE"; // máx. 15 chars (campo 60)
 const PIX_RECEIVER = "Erisson Eduardo Nogueira · Banco XP";
 
 // --- Cripto (endereços públicos de recebimento) ---
-// Adicione moedas aqui: { name, network, address }. Vazio = bloco "em breve".
 const CRYPTO: { name: string; network: string; address: string }[] = [
   {
     name: "POL · USDC · USDT",
@@ -23,8 +22,7 @@ const CRYPTO: { name: string; network: string; address: string }[] = [
 
 // Monta o "Pix Copia e Cola" (BR Code / EMV) sem valor — o doador escolhe quanto.
 function emv(id: string, value: string) {
-  const len = value.length.toString().padStart(2, "0");
-  return `${id}${len}${value}`;
+  return `${id}${value.length.toString().padStart(2, "0")}${value}`;
 }
 function crc16(payload: string) {
   let crc = 0xffff;
@@ -39,8 +37,7 @@ function crc16(payload: string) {
 }
 function buildPixPayload() {
   const merchantAccount = emv("00", "br.gov.bcb.pix") + emv("01", PIX_KEY);
-  const additional = emv("05", "***");
-  let payload =
+  const payload =
     emv("00", "01") +
     emv("26", merchantAccount) +
     emv("52", "0000") +
@@ -48,12 +45,12 @@ function buildPixPayload() {
     emv("58", "BR") +
     emv("59", PIX_NAME) +
     emv("60", PIX_CITY) +
-    emv("62", additional) +
+    emv("62", emv("05", "***")) +
     "6304";
   return payload + crc16(payload);
 }
 
-function CopyButton({ text, label = "COPIAR" }: { text: string; label?: string }) {
+function CopyButton({ text, label }: { text: string; label: string }) {
   const [done, setDone] = useState(false);
   return (
     <button
@@ -69,7 +66,7 @@ function CopyButton({ text, label = "COPIAR" }: { text: string; label?: string }
         }
       }}
     >
-      {done ? "COPIADO!" : label}
+      {done ? "✓ COPIADO!" : label}
     </button>
   );
 }
@@ -100,26 +97,18 @@ export default function ApoiarPage() {
       </header>
 
       <main>
-        <section className="hero donate-hero shell-width">
-          <div className="hero-copy">
+        <section className="donate-page">
+          <div className="donate-intro">
             <div className="eyebrow">APOIE O PROJETO · OPEN SOURCE</div>
             <h1>
-              AJUDE O MEDUSA CLIP
-              <br />
-              <span>A CRESCER.</span>
+              APOIE O <span>MEDUSA CLIP</span>
             </h1>
             <p className="hero-text">
-              O Medusa Clip é <strong>grátis e open source (AGPL-3.0)</strong>: sem
-              anúncios, sem paywall, sem vender seus dados. Se ele te economiza tempo,
-              considere apoiar — é o que mantém o desenvolvimento de pé.
-            </p>
-            <p className="hero-text">
-              No espírito do Blender: <strong>feito pela comunidade, pra comunidade</strong>.
-              Doe por <strong>Pix</strong> ou <strong>cripto</strong>, quanto quiser. Toda
-              doação conta. Valeu!
+              Grátis e open source (AGPL-3.0), no espírito do Blender. Doe por{" "}
+              <strong>Pix</strong> ou <strong>cripto</strong>, quanto quiser — sem
+              intermediário e sem taxa. Valeu! 💛
             </p>
             <p className="hero-note">DOAÇÃO OPCIONAL · NUNCA UM PAYWALL · O APP SEGUE GRÁTIS</p>
-            <p className="donate-suggest">Sugestões: R$ 5 · 15 · 25 · 50 · 100 · 150 — ou quanto quiser.</p>
           </div>
 
           <div className="donate-card">
@@ -129,19 +118,19 @@ export default function ApoiarPage() {
               <p className="donate-method-sub">{PIX_RECEIVER}</p>
 
               <div className="donate-qr">
-                <QRCodeSVG value={pixPayload} size={176} level="M" marginSize={2} />
+                <QRCodeSVG value={pixPayload} size={172} level="M" marginSize={2} />
               </div>
 
-              <span className="donate-label">PIX COPIA E COLA</span>
-              <div className="copy-row">
+              <div className="copy-field">
+                <span className="donate-label">PIX COPIA E COLA</span>
                 <code className="copy-code">{pixPayload}</code>
-                <CopyButton text={pixPayload} />
+                <CopyButton text={pixPayload} label="COPIAR CÓDIGO PIX" />
               </div>
 
-              <span className="donate-label">CHAVE PIX (ALEATÓRIA)</span>
-              <div className="copy-row">
+              <div className="copy-field">
+                <span className="donate-label">CHAVE PIX (ALEATÓRIA)</span>
                 <code className="copy-code">{PIX_KEY}</code>
-                <CopyButton text={PIX_KEY} />
+                <CopyButton text={PIX_KEY} label="COPIAR CHAVE" />
               </div>
 
               <p className="donate-foot">
@@ -153,30 +142,22 @@ export default function ApoiarPage() {
             {/* CRIPTO */}
             <div className="donate-method">
               <h3 className="donate-method-title">DOAR COM CRIPTO</h3>
-              {CRYPTO.length === 0 ? (
-                <p className="donate-foot">Em breve.</p>
-              ) : (
-                <>
-                  {CRYPTO.map((c) => (
-                    <div className="crypto-item" key={c.network + c.address}>
-                      <span className="donate-label">
-                        REDE {c.network.toUpperCase()} — {c.name}
-                      </span>
-                      <div className="donate-qr donate-qr-sm">
-                        <QRCodeSVG value={c.address} size={132} level="M" marginSize={2} />
-                      </div>
-                      <div className="copy-row">
-                        <code className="copy-code">{c.address}</code>
-                        <CopyButton text={c.address} />
-                      </div>
-                    </div>
-                  ))}
-                  <p className="donate-foot">
-                    ⚠️ Envie <strong>somente na rede Polygon</strong>. Token enviado em outra
-                    rede pode se perder.
-                  </p>
-                </>
-              )}
+              {CRYPTO.map((c) => (
+                <div className="crypto-item" key={c.network + c.address}>
+                  <span className="donate-label">
+                    REDE {c.network.toUpperCase()} · {c.name}
+                  </span>
+                  <div className="donate-qr">
+                    <QRCodeSVG value={c.address} size={148} level="M" marginSize={2} />
+                  </div>
+                  <code className="copy-code">{c.address}</code>
+                  <CopyButton text={c.address} label="COPIAR ENDEREÇO" />
+                </div>
+              ))}
+              <p className="donate-foot">
+                ⚠️ Envie <strong>somente na rede Polygon</strong>. Token enviado em outra
+                rede pode se perder.
+              </p>
             </div>
           </div>
         </section>
