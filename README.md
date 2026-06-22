@@ -122,6 +122,17 @@ bash scripts/build_app.sh
 cd web && npm install && npm run dev
 ```
 
+## 🤝 Contribuindo
+
+Toda ajuda é bem-vinda — código, bug, ideia, tradução ou divulgação. 💛
+
+- **Por onde começar:** veja as [issues abertas](https://github.com/Edualnog/medusa-clip/issues), em especial as marcadas [`good first issue`](https://github.com/Edualnog/medusa-clip/labels/good%20first%20issue).
+- **Bug ou ideia:** abra uma [issue](https://github.com/Edualnog/medusa-clip/issues/new/choose) (tem template). Dúvidas e conversas vão pras [Discussions](https://github.com/Edualnog/medusa-clip/discussions).
+- **Código:** faça um **fork** → crie uma **branch** → assine os commits com `git commit -s` (**DCO**, exigido pelo CI — ver [DCO.md](DCO.md)) → abra um **Pull Request**.
+- **Antes do PR:** rode os testes do motor (`cd agent && make test`) e mantenha os princípios do projeto — **local-first**, **sem cadastro**, **BYO key**.
+
+O guia completo está no **[CONTRIBUTING.md](CONTRIBUTING.md)**. Contribuições entram sob a licença **AGPL-3.0** (sem CLA; usamos DCO).
+
 ## 📁 Estrutura
 
 ```text
