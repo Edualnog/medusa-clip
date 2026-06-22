@@ -4,29 +4,27 @@ import { useState } from "react";
 import Link from "next/link";
 import { MedusaLogo } from "../medusa-logo";
 
-// Coletivo no Open Collective: https://opencollective.com/medusaclip
-// Moeda BRL (fiscal host brasileiro) — o `amount` da URL vai em reais.
-const OPEN_COLLECTIVE_SLUG = "medusaclip";
 const CURRENCY_SYMBOL = "R$";
+
+// Payment Links do Stripe — um por valor (doação única, BRL).
+// COLE AQUI a URL de cada link (formato https://buy.stripe.com/...).
+// Enquanto vazio, o botão aparece como "EM BREVE" (não quebra a página).
+const STRIPE_LINKS: Record<number, string> = {
+  5: "https://buy.stripe.com/6oUcN5gDueD84qt3gqgw000",
+  15: "https://buy.stripe.com/9B66oHfzqeD82il4kugw001",
+  25: "https://buy.stripe.com/fZufZh4UM0Mi4qt4kugw002",
+  50: "https://buy.stripe.com/fZu9AT1IA3YucWZ18igw003",
+  100: "https://buy.stripe.com/bJe3cv0Ew7aG6yB2cmgw004",
+  150: "https://buy.stripe.com/3cI8wP5YQ9iO4qt9EOgw005",
+};
+
 const PRESETS = [5, 15, 25, 50, 100, 150];
 
-type Interval = "month" | "oneTime";
-
-function donateUrl(amount: number, interval: Interval) {
-  const base = `https://opencollective.com/${OPEN_COLLECTIVE_SLUG}/donate`;
-  const params = new URLSearchParams({ amount: String(amount) });
-  if (interval === "month") params.set("interval", "month");
-  return `${base}?${params.toString()}`;
-}
-
 export default function ApoiarPage() {
-  const [interval, setInterval] = useState<Interval>("month");
   const [selected, setSelected] = useState<number>(25);
-  const [custom, setCustom] = useState<string>("");
 
-  const customValue = Number(custom);
-  const amount = custom.trim() && customValue > 0 ? customValue : selected;
-  const valid = amount > 0;
+  const link = STRIPE_LINKS[selected] || "";
+  const ready = Boolean(link);
 
   return (
     <>
@@ -66,80 +64,40 @@ export default function ApoiarPage() {
             </p>
             <p className="hero-text">
               No espírito do Blender: <strong>feito pela comunidade, pra comunidade</strong>.
-              Se cada usuário ativo doasse alguns dólares por mês, o projeto estaria
-              garantido o ano inteiro. Toda doação conta. Valeu!
+              Escolha um valor e contribua em segundos. Toda doação conta. Valeu!
             </p>
             <p className="hero-note">DOAÇÃO OPCIONAL · NUNCA UM PAYWALL · O APP SEGUE GRÁTIS</p>
           </div>
 
           <div className="donate-card">
-            <div className="donate-toggle" role="tablist" aria-label="Frequência da doação">
-              <button
-                type="button"
-                role="tab"
-                aria-selected={interval === "month"}
-                className={interval === "month" ? "active" : ""}
-                onClick={() => setInterval("month")}
-              >
-                MENSAL
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={interval === "oneTime"}
-                className={interval === "oneTime" ? "active" : ""}
-                onClick={() => setInterval("oneTime")}
-              >
-                ÚNICA
-              </button>
-            </div>
+            <p className="donate-sub">FAÇA UMA DOAÇÃO ÚNICA</p>
 
             <div className="donate-amounts">
               {PRESETS.map((value) => (
                 <button
                   type="button"
                   key={value}
-                  className={!custom.trim() && selected === value ? "donate-amount selected" : "donate-amount"}
-                  onClick={() => {
-                    setSelected(value);
-                    setCustom("");
-                  }}
+                  className={selected === value ? "donate-amount selected" : "donate-amount"}
+                  onClick={() => setSelected(value)}
                 >
                   {CURRENCY_SYMBOL} {value}
                 </button>
               ))}
             </div>
 
-            <p className="donate-sub">
-              {interval === "month" ? "Doar todo mês" : "Doar uma vez"}
-            </p>
-
-            <div className="donate-custom">
-              <span className="donate-symbol">{CURRENCY_SYMBOL}</span>
-              <input
-                type="number"
-                min={1}
-                inputMode="decimal"
-                placeholder="Outro valor"
-                aria-label="Valor personalizado"
-                value={custom}
-                onChange={(e) => setCustom(e.target.value)}
-              />
-            </div>
-
             <a
-              className={valid ? "button button-primary donate-submit" : "button button-primary donate-submit disabled"}
-              href={valid ? donateUrl(amount, interval) : undefined}
+              className={ready ? "button button-primary donate-submit" : "button button-primary donate-submit disabled"}
+              href={ready ? link : undefined}
               target="_blank"
               rel="noopener noreferrer"
-              aria-disabled={!valid}
+              aria-disabled={!ready}
             >
-              DOAR {CURRENCY_SYMBOL} {valid ? amount : "—"} {interval === "month" ? "/ MÊS" : ""} →
+              {ready ? `DOAR ${CURRENCY_SYMBOL} ${selected} →` : "EM BREVE"}
             </a>
 
             <p className="donate-foot">
-              Pagamento seguro via <strong>Open Collective</strong> — transparência total:
-              você vê pra onde vai cada centavo.
+              Pagamento seguro via <strong>Stripe</strong> — cartão ou Pix. O valor vai
+              direto pro projeto.
             </p>
           </div>
         </section>
