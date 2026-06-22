@@ -27,8 +27,14 @@ cd web     && npm install && npm run dev  # landing
 - Rode os testes do motor (`cd agent && make test`) quando mexer nele.
 - Princípios inegociáveis do projeto: **local-first**, **sem cadastro** e **BYO key** —
   nada de subir vídeo do usuário pra nuvem nem reintroduzir login/backend sem discussão.
+- **Assine seus commits (DCO):** use `git commit -s`. Um CI verifica isso em todo PR.
+  Detalhes em [DCO.md](DCO.md).
 
-## Licença
+## Licença e DCO
 
 Ao contribuir, você concorda que sua contribuição seja licenciada sob a **AGPL-3.0**,
 a mesma do projeto.
+
+Não usamos CLA. Em vez disso, cada commit deve ter um `Signed-off-by` (via `git commit
+-s`), que certifica que você tem o direito de submeter aquele código sob a AGPL-3.0 —
+o **Developer Certificate of Origin**. Veja [DCO.md](DCO.md).

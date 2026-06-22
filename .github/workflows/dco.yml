@@ -1,0 +1,42 @@
+name: DCO
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  dco:
+    name: Verifica Signed-off-by
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check Signed-off-by em todos os commits
+        run: |
+          base="${{ github.event.pull_request.base.sha }}"
+          head="${{ github.event.pull_request.head.sha }}"
+          fail=0
+          for sha in $(git rev-list "$base".."$head"); do
+            # pula merge commits (2+ pais)
+            if [ "$(git rev-list --parents -n 1 "$sha" | wc -w)" -gt 2 ]; then
+              continue
+            fi
+            name=$(git show -s --format='%an' "$sha")
+            email=$(git show -s --format='%ae' "$sha")
+            subject=$(git show -s --format='%s' "$sha")
+            expected="Signed-off-by: ${name} <${email}>"
+            if ! git show -s --format='%B' "$sha" | grep -qiF "$expected"; then
+              echo "::error::Commit ${sha:0:8} (\"$subject\") sem Signed-off-by valido. Esperado: $expected"
+              fail=1
+            fi
+          done
+          if [ "$fail" -ne 0 ]; then
+            echo ""
+            echo "Falta o DCO sign-off. Veja DCO.md."
+            echo "Novos commits:  git commit -s"
+            echo "Commits ja feitos:  git rebase --signoff <base> && git push -f"
+            exit 1
+          fi
+          echo "OK: todos os commits tem Signed-off-by valido."
