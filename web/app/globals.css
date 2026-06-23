@@ -1115,12 +1115,18 @@ a {
   }
 
   .footer {
-    grid-template-columns: 1fr auto;
+    grid-template-columns: 1fr;
+    justify-items: center;
+    gap: 18px;
+    text-align: center;
   }
 
-  .footer p {
-    grid-column: 1 / -1;
-    grid-row: 2;
+  .footer-brand {
+    align-items: center;
+  }
+
+  .footer-social {
+    justify-self: center;
   }
 }
 
