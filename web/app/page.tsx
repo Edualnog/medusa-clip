@@ -1,9 +1,8 @@
 import Link from "next/link";
 import { DownloadPicker } from "./download-picker";
 import { MedusaLogo } from "./medusa-logo";
-
-const DISCORD_URL = "https://discord.gg/jqUDqRt8";
-const GITHUB_URL = "https://github.com/Edualnog/medusa-clip";
+import { MobileNav } from "./mobile-nav";
+import { DISCORD_URL, GITHUB_URL } from "./site-links";
 
 function DiscordIcon({ size = 20 }: { size?: number }) {
   return (
@@ -142,6 +141,8 @@ export default function Home() {
               APOIAR
             </Link>
           </div>
+
+          <MobileNav />
         </nav>
       </header>
 

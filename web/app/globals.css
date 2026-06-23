@@ -173,6 +173,96 @@ a {
   color: #5865f2;
 }
 
+/* Menu mobile (hamburguer): escondido no desktop, ligado no breakpoint <=780px. */
+.mobile-nav {
+  position: relative;
+  display: none;
+  justify-self: end;
+}
+
+.mobile-nav-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border: 2px solid var(--line-strong);
+  background: transparent;
+  color: var(--fg);
+  cursor: pointer;
+  transition: border-color 120ms ease, color 120ms ease;
+}
+
+.mobile-nav-toggle:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.burger {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 18px;
+}
+
+.burger span {
+  display: block;
+  width: 100%;
+  height: 2px;
+  background: currentColor;
+  transition: transform 140ms ease, opacity 140ms ease;
+}
+
+.burger.is-open span:nth-child(1) {
+  transform: translateY(6px) rotate(45deg);
+}
+
+.burger.is-open span:nth-child(2) {
+  opacity: 0;
+}
+
+.burger.is-open span:nth-child(3) {
+  transform: translateY(-6px) rotate(-45deg);
+}
+
+.mobile-nav-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 25;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  cursor: default;
+}
+
+.mobile-nav-menu {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  min-width: 210px;
+  padding: 8px;
+  background: rgba(6, 6, 8, 0.98);
+  border: 2px solid var(--line-strong);
+  box-shadow: 6px 6px 0 #111116;
+}
+
+.mobile-nav-menu a {
+  font-family: var(--font-pixel);
+  font-size: 9px;
+  letter-spacing: 1px;
+  color: var(--muted);
+  padding: 13px 12px;
+  transition: color 120ms ease, background 120ms ease;
+}
+
+.mobile-nav-menu a:hover {
+  color: var(--fg);
+  background: rgba(255, 255, 255, 0.04);
+}
+
 .hero {
   min-height: 690px;
   display: grid;
@@ -1040,6 +1130,15 @@ a {
     display: none;
   }
 
+  /* no mobile, os links de secao + sociais + APOIAR vivem no menu hamburguer */
+  .nav-actions {
+    display: none;
+  }
+
+  .mobile-nav {
+    display: inline-flex;
+  }
+
   .community-grid {
     grid-template-columns: 1fr;
   }
@@ -1153,7 +1252,8 @@ a {
     gap: 8px;
   }
 
-  .nav-icon {
+  .nav-icon,
+  .mobile-nav-toggle {
     width: 36px;
     height: 36px;
   }
