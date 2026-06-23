@@ -33,8 +33,9 @@ def _user(transcript_ts: str, game_context: str, video_dur: float, count: int,
         f"Contexto do jogo/canal: {game_context or 'desconhecido'}\n"
         f"Duracao do video: {video_dur:.0f}s.\n"
         f'Transcricao COM TEMPO (segundos absolutos):\n"""\n{transcript_ts or "(sem fala)"}\n"""\n\n'
-        f"Proponha ate {count} momentos pra virar cortes. Cada corte deve ter entre "
-        f"{min_len:.0f} e {max_len:.0f} segundos, comecar no setup e terminar no payoff, e os "
+        f"Proponha ate {count} momentos pra virar cortes. A duracao varia com o TIPO do "
+        f"momento (clutch/fail/reacao curtos ~15-50s; treta/RP/historia ate ~3min), no "
+        f"maximo {max_len:.0f}s; comece no setup e termine no payoff, e os "
         f"tempos devem ficar dentro de [0, {video_dur:.0f}]. NAO proponha momentos fracos so pra "
         f"completar a lista. Responda um JSON:\n"
         '  {"clips": [ {"start_s": numero, "end_s": numero, "reason": "por que prende (1 frase)"}, ... ] }'

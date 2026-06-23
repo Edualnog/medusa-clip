@@ -132,8 +132,11 @@ def generate_clips(
 
         _report(progress, 0.52, "Lendo o roteiro (IA)…")
         ts_all = whisper.transcript_timestamped(words_all)
+        # Proposta e sobre ONDE (o juiz re-encaixa a duracao pelo TIPO depois): usa o
+        # piso absoluto, nao o min_len do preset, pra nao forcar janelas longas demais.
         proposals, _pu = propose_candidates(
-            ts_all, game_context, media.duration, count=max_clips * 2, min_len=lo, max_len=hi
+            ts_all, game_context, media.duration, count=max_clips * 2,
+            min_len=HARD_FLOOR, max_len=hi,
         )
 
     # 4-5. sinais (audio + movimento visual) -> fusao -> candidatos
@@ -446,9 +449,11 @@ def _prepare_candidates(
     from medusacut.hooks.moments import moment_bounds
     from medusacut.signals.fusion import MAX_LEN
 
-    # envelope global por cima da faixa do TIPO: min_len pedido sobe o piso, max_len/
-    # MAX_LEN baixa o teto. Sem min_len, o piso e HARD_FLOOR (deixa clutch ficar curto).
-    floor = min_len if min_len is not None else HARD_FLOOR
+    # A duracao final e decidida pelo TIPO do momento (hooks.moments), NAO pelo min_len
+    # pedido: o envelope da UI so limita o TETO (ceil=max_len). Por isso o piso aqui e o
+    # HARD_FLOOR absoluto (anti-degenerado) — assim clutch/fail/reacao saem CURTOS na
+    # duracao natural do tipo, sem serem esticados ate o min_len do preset.
+    floor = HARD_FLOOR
     ceil = max_len if max_len is not None else MAX_LEN
     # O juiz escolhe as fronteiras DENTRO da janela; uma ancora de ~MIN_LEN trava o
     # tipo longo (story) em ~60s. Alarga a janela ate `ceil` em torno do centro, SEM

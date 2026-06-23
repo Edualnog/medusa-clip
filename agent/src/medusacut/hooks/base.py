@@ -68,13 +68,15 @@ def _judge_user(
     dur_rule = (
         "Classifique o TIPO do momento e escolha a duracao NATURAL desse tipo — nao "
         "estique um lance rapido nem corte uma historia. Tipos e faixas (segundos):\n"
-        f"{prompt_lines()}\n"
+        f"{prompt_lines(ceil=max_len)}\n"
         "Devolva o tipo em \"moment_type\" e faca best_start_s/best_end_s baterem com a "
         "faixa do tipo escolhido (clutch/fail/reacao = punchy e curto; treta/build-up/"
         "RP = arco longo)."
     )
-    if min_len is not None and max_len is not None:
-        dur_rule += f"\nAlem disso, a duracao final deve ficar entre {min_len:.0f} e {max_len:.0f}s."
+    # So o TETO e imposto por fora: o piso vem do TIPO (clutch pode sair curto). Nada de
+    # forcar um minimo global — senao todo corte colava no min_len e a faixa do tipo morria.
+    if max_len is not None:
+        dur_rule += f"\nO corte NUNCA deve passar de {max_len:.0f}s (limite maximo)."
     anchor_line = f"Pico de acao por volta de ~{anchor_s:.1f}s.\n" if anchor_s is not None else ""
     cuts_line = ""
     if scene_cuts:

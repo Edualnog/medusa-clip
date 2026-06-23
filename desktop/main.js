@@ -234,15 +234,36 @@ function sendToWin(channel, payload) {
   if (win && !win.isDestroyed()) win.webContents.send(channel, payload);
 }
 
-// Compara versoes "a.b.c" numericamente; true se `a` for maior que `b`.
+// Quebra "v1.2.3-rc1+build" em { nums:[1,2,3], pre:"rc1" }. parseInt (nao Number)
+// tolera sufixo no componente; build metadata (+...) e descartado. Componente
+// invalido/ausente vira 0 — assim uma tag com prerelease nao e mais lida como 0.
+function parseVersion(v) {
+  const s = String(v || "").trim().replace(/^v/i, "").split("+")[0];
+  const dash = s.indexOf("-");
+  const core = dash === -1 ? s : s.slice(0, dash);
+  const pre = dash === -1 ? "" : s.slice(dash + 1);
+  const nums = core.split(".").map((x) => {
+    const n = parseInt(x, 10);
+    return Number.isFinite(n) ? n : 0;
+  });
+  return { nums, pre };
+}
+
+// Compara versoes; true se `a` for mais nova que `b`. Compara o core numericamente e,
+// no mesmo core, aplica a regra semver: uma versao estavel e mais nova que um
+// prerelease do mesmo core (1.2.0 > 1.2.0-rc1); entre dois prereleases, ordem textual.
 function isNewerVersion(a, b) {
-  const pa = String(a).split(".").map(Number);
-  const pb = String(b).split(".").map(Number);
-  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
-    const d = (pa[i] || 0) - (pb[i] || 0);
+  const va = parseVersion(a);
+  const vb = parseVersion(b);
+  const len = Math.max(va.nums.length, vb.nums.length);
+  for (let i = 0; i < len; i++) {
+    const d = (va.nums[i] || 0) - (vb.nums[i] || 0);
     if (d !== 0) return d > 0;
   }
-  return false;
+  if (va.pre === vb.pre) return false;
+  if (!va.pre) return true; // a estavel vs b prerelease -> a e mais nova
+  if (!vb.pre) return false; // a prerelease vs b estavel -> a NAO e mais nova
+  return va.pre > vb.pre; // ambos prerelease: heuristica lexicografica
 }
 
 // Update do Mac (app NAO assinado): o swap nativo do Squirrel.Mac exige assinatura,
@@ -413,9 +434,13 @@ ipcMain.handle("pick-file", async () => {
   });
   return r.canceled ? null : r.filePaths[0];
 });
-// Apaga os dados locais (chave, prefs, onboarding) — NAO mexe nos clips.
+// Apaga os dados locais (chave de IA, provedor, aceite/onboarding, stats) e volta o
+// app pro 1o acesso. PRESERVA so a pasta dos clips: os arquivos ficam no disco E a
+// Biblioteca continua achando-os (senao o ponteiro se perdia e os clips antigos
+// "sumiam" da UI, contrariando o aviso "os clips nao sao apagados").
 ipcMain.handle("wipe-local-data", () => {
-  saveConfig({});
+  const c = loadConfig();
+  saveConfig(c.libraryDir ? { libraryDir: c.libraryDir } : {});
   return { ok: true };
 });
 
@@ -609,6 +634,16 @@ async function validateOpenRouter(key) {
   }
 }
 
+// Le o code/type do erro JSON da OpenAI (ex.: "insufficient_quota", "rate_limit_exceeded").
+async function openaiErrorCode(r) {
+  try {
+    const body = await r.json();
+    return (body && body.error && (body.error.code || body.error.type)) || "";
+  } catch {
+    return "";
+  }
+}
+
 // OpenAI: lista de modelos autentica a chave sem consumir tokens.
 async function validateOpenAI(key) {
   try {
@@ -617,7 +652,20 @@ async function validateOpenAI(key) {
     });
     if (r.status === 200) return { valid: true };
     if (r.status === 401) return { valid: false, error: "Chave inválida ou expirada." };
-    if (r.status === 429) return { valid: false, error: "Sem crédito ou limite atingido na OpenAI." };
+    if (r.status === 429) {
+      // 429 neste endpoint de metadados (nao gasta tokens) e quase sempre rate limit,
+      // NAO falta de credito: a chave ja autenticou. So tratamos como "sem credito"
+      // quando a OpenAI manda insufficient_quota no corpo; senao a chave esta OK,
+      // so esta sendo limitada agora — nao bloqueia, so avisa.
+      const code = await openaiErrorCode(r);
+      if (code === "insufficient_quota") {
+        return { valid: false, error: "Conta OpenAI sem crédito/quota — adicione saldo em platform.openai.com." };
+      }
+      return {
+        valid: true,
+        warning: "Chave válida, mas a OpenAI está limitando requisições agora (rate limit). Pode salvar e tentar gerar em instantes.",
+      };
+    }
     return { valid: false, error: "OpenAI respondeu " + r.status + "." };
   } catch {
     return { valid: false, error: "Sem internet / OpenAI fora do ar." };
@@ -646,6 +694,12 @@ ipcMain.handle("get-stats", () => {
 // Lista os cortes ja gerados (varre as subpastas por run + le os manifests).
 ipcMain.handle("list-clips", () => {
   const root = libraryRoot();
+  // Recomeca o allowlist do zero a cada listagem: o registry passa a conter SO os
+  // clips/capas atualmente listados (sem crescer pra sempre numa sessao longa, e
+  // soltando ids de clips ja apagados). list-clips e sincrono e re-registra tudo
+  // antes de retornar, e os ids sao deterministicos (sha1 do caminho) — logo modais/
+  // previews de clips que continuam existindo seguem com o MESMO id, sem quebrar.
+  clipRegistry.clear();
   const out = [];
   let runs;
   try {
@@ -763,6 +817,11 @@ ipcMain.on("generate", (_e, opts) => {
     return;
   }
 
+  // Garante UM unico job-error por execucao: o motor pode emitir {type:"error"} e
+  // depois sair !=0, e o spawn pode disparar 'error' E 'close' juntos — sem isso o
+  // renderer mostraria duas mensagens de erro pra mesma falha.
+  let reported = false;
+
   const rl = readline.createInterface({ input: child.stdout });
   rl.on("line", (line) => {
     line = line.trim();
@@ -781,7 +840,10 @@ ipcMain.on("generate", (_e, opts) => {
           totals: { totalCost: c.totalCost, totalTokens: c.totalTokens },
         });
       } else if (msg.type === "warning") win.webContents.send("job-warning", msg);
-      else if (msg.type === "error") win.webContents.send("job-error", msg);
+      else if (msg.type === "error") {
+        reported = true;
+        win.webContents.send("job-error", msg);
+      }
     } catch {
       /* log do ffmpeg/whisper — ignora */
     }
@@ -789,17 +851,21 @@ ipcMain.on("generate", (_e, opts) => {
 
   let err = "";
   child.stderr.on("data", (d) => (err += d.toString()));
-  child.on("close", (code) => {
-    child = null;
-    if (code !== 0) {
-      win.webContents.send("job-error", {
-        message: "O motor encerrou com erro (código " + code + ").",
-        detail: err.slice(-400),
-      });
-    }
-  });
   child.on("error", (e2) => {
     child = null;
+    if (reported) return;
+    reported = true;
     win.webContents.send("job-error", { message: "Não consegui iniciar o motor: " + e2.message });
+  });
+  child.on("close", (code) => {
+    child = null;
+    // Sucesso (0) ou erro ja reportado (motor emitiu {type:"error"} / evento 'error'):
+    // nada a fazer. So aqui pra falhas que sairam !=0 sem uma mensagem limpa.
+    if (reported || code === 0) return;
+    reported = true;
+    win.webContents.send("job-error", {
+      message: "O motor encerrou com erro (código " + code + ").",
+      detail: err.slice(-400),
+    });
   });
 });

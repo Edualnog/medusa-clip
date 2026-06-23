@@ -65,8 +65,17 @@ def moment_bounds(
     return lo, hi
 
 
-def prompt_lines() -> str:
-    """Lista 'tipo: descricao (min-max s)' p/ injetar no prompt do juiz."""
-    return "\n".join(
-        f"  - {k}: {desc} ({lo:.0f}-{hi:.0f}s)" for k, (lo, hi, desc) in MOMENTS.items()
-    )
+def prompt_lines(ceil: float | None = None) -> str:
+    """Lista 'tipo: descricao (min-max s)' p/ injetar no prompt do juiz.
+
+    `ceil` (= max_len do envelope) baixa o TETO de cada faixa, mantendo o prompt
+    coerente com o que o pipeline trava depois (o envelope so limita o teto; o piso
+    de cada corte e por TIPO, nao pelo min_len pedido).
+    """
+    lines = []
+    for k, (lo, hi, desc) in MOMENTS.items():
+        if ceil is not None:
+            hi = min(hi, ceil)
+            lo = min(lo, hi)
+        lines.append(f"  - {k}: {desc} ({lo:.0f}-{hi:.0f}s)")
+    return "\n".join(lines)

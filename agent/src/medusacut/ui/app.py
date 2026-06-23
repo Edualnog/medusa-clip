@@ -75,11 +75,13 @@ with st.sidebar:
         min_len = st.slider("Duracao minima (s)", 30, 150, int(fusion.MIN_LEN), 5)
         max_len = st.slider("Duracao maxima (s)", 60, 180, int(fusion.MAX_LEN), 5)
         st.divider()
+        # SO 2 layouts reais (decisao de produto): facecam no terco superior, ou
+        # gameplay tela cheia com blur. Os antigos (dynamic_gameplay/gameplay_only) foram
+        # removidos do motor — nao oferece-los aqui pra o painel nao prometer o que o
+        # pipeline so colapsa em gameplay_blur.
         _LAYOUTS = {
-            "Gameplay (segue a acao)": "dynamic_gameplay",
             "Facecam em cima + gameplay embaixo": "facecam_top_gameplay_bottom",
-            "Tela cheia + fundo desfocado": "gameplay_blur",
-            "Crop central (estatico)": "gameplay_only",
+            "Tela cheia + fundo desfocado (foco na acao)": "gameplay_blur",
         }
         layout_label = st.selectbox("Layout", list(_LAYOUTS), index=0)
         layout_value = _LAYOUTS[layout_label]
@@ -196,10 +198,13 @@ if "track" in ss:
             f"{media.duration:.0f}s · {media.fps:.0f} fps"
         )
 
-# Resultado da auto-deteccao do facecam.
+# Resultado da auto-deteccao do facecam. O manifest grava {"auto", "method": "yunet",
+# "box": [...]} quando acha, ou {"auto", "method": "none", "fallback": "gameplay_blur"}
+# quando nao acha — entao detectamos pela presenca da "box" (nao por uma chave "detected"
+# que nunca existiu).
 fc = ss.get("facecam")
 if fc and fc.get("auto"):
-    if fc.get("detected"):
+    if fc.get("box"):
         b = fc["box"]
         st.success(
             f"🎯 Facecam detectado automaticamente: "
@@ -207,8 +212,8 @@ if fc and fc.get("auto"):
         )
     else:
         st.info(
-            "Facecam nao detectado (sem rosto estavel) — usei o preset topo-direita. "
-            "Escolha um canto manual no Avancado se preferir."
+            "Facecam nao detectado (sem rosto estavel nos cantos superiores) — "
+            "usei o layout tela cheia com blur (foco 100% na acao)."
         )
 
 # Custo da geracao (LLM de viralizacao).

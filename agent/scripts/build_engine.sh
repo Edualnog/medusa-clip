@@ -40,7 +40,7 @@ PY
 
 # Pacotes EXCLUÍDOS de propósito (peso morto — o app não usa):
 #  - onnxruntime (~69MB): só seria usado pelo VAD Silero; transcrevemos SEM vad_filter.
-#  - boto3/botocore (~25MB): só o worker da VPS (abandonada) usava, p/ R2.
+# (boto3/supabase/cryptography saíram do projeto junto com o worker da VPS abandonada.)
 # ATENÇÃO: `av` (PyAV) NÃO pode sair — o faster-whisper usa PyAV pra DECODIFICAR o
 # áudio na transcrição (testado: sem ele, "No module named 'av'" e cortes sem legenda).
 # Sempre revisar este enxugamento ao mexer em transcribe/scene/reframe.
@@ -59,7 +59,6 @@ fi
   --collect-all huggingface_hub --collect-all anthropic "${MLX_FLAGS[@]}" \
   --collect-submodules medusacut \
   --exclude-module onnxruntime \
-  --exclude-module boto3 --exclude-module botocore \
   --exclude-module torch --exclude-module torchaudio --exclude-module torchvision \
   --exclude-module sympy --exclude-module networkx \
   "$ENTRY"

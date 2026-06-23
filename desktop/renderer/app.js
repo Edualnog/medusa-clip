@@ -14,9 +14,9 @@ const LAYOUT_LABELS = {
 };
 
 const DURATION_LABELS = {
-  "60,180": "PADRÃO · 1–3MIN",
-  "120,300": "LONGOS · 2–5MIN",
-  "30,90": "CURTOS · 30–90S",
+  "60,180": "POR TIPO · ATÉ 3MIN",
+  "120,300": "LONGOS · ATÉ 5MIN",
+  "30,90": "CURTOS · ATÉ 90S",
 };
 
 let mode = "file";
@@ -328,7 +328,8 @@ async function checkKey() {
   if (result.limitRemaining != null) extra = ` · RESTA $${Number(result.limitRemaining).toFixed(2)}`;
   else if (result.usage != null) extra = ` · USADO $${Number(result.usage).toFixed(4)}`;
   setKeyStatus(`CHAVE VÁLIDA${result.freeTier ? " · FREE TIER" : ""}${extra}`, "valid");
-  $("keyHelper").textContent = `Chave ${providerLabel()} verificada e pronta.`;
+  // Aviso nao-bloqueante (ex.: rate limit transitorio na OpenAI): a chave e valida.
+  $("keyHelper").textContent = result.warning || `Chave ${providerLabel()} verificada e pronta.`;
   $("keyHelper").classList.add("ready");
   return true;
 }
