@@ -3,6 +3,17 @@
 // O app abre estas notas automaticamente no 1o boot apos atualizar (ver app.js).
 window.CHANGELOG = [
   {
+    version: "0.1.22",
+    date: "2026-06-22",
+    title: "Cortes mais certeiros",
+    items: [
+      "Duracao inteligente por tipo: clutch e fail saem curtos e punchy; treta e historia ganham o arco completo.",
+      "'Apagar dados deste dispositivo' nao some mais com seus clips ja gerados.",
+      "Chave da OpenAI em limite de requisicoes (rate limit) nao e mais recusada como invalida.",
+      "Ajustes de estabilidade (mensagens de erro, atualizacao e desempenho).",
+    ],
+  },
+  {
     version: "0.1.21",
     date: "2026-06-21",
     title: "Sem cadastro: chega de login",
